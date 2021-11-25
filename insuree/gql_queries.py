@@ -4,7 +4,7 @@ from .models import Insuree, InsureePhoto, Education, Profession, Gender, Identi
     Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
-from core import prefix_filterset, filter_validity, ExtendedConnection
+from core import prefix_filterset, ExtendedConnection
 
 
 class GenderGQLType(DjangoObjectType):

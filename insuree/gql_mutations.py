@@ -2,14 +2,11 @@ import logging
 import uuid
 import pathlib
 import base64
-from copy import copy
 import graphene
 from insuree.services import validate_insuree_number
 
 from .apps import InsureeConfig
-from core import filter_validity, assert_string_length
-from core.schema import TinyInt, SmallInt, OpenIMISMutation
-from django.conf import settings
+from core.schema import OpenIMISMutation
 from django.db.models import Q
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
