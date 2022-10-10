@@ -167,6 +167,69 @@ class Education(models.Model):
         managed = False
         db_table = 'tblEducations'
 
+class HomeSituation(models.Models):
+    #question situation de l'habitat
+    id  = models.SmallIntegerField(db_column='HomeSituationId', primary_key=True)
+    home_situation =  models.CharField(db_column='HomeSituation', max_length = 50)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    class Meta:
+        managed =  False
+        db_table = 'tblHomeSituation'
+
+class AverageEarning(models.Models):
+    #combien gagnez vous en moyenne 
+    id  = models.SmallIntegerField(db_column='AverageEarningId', primary_key=True)
+    average_earning =  models.CharField(db_column='AverageEarning', max_length = 50)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tblAverageEarning'
+
+
+class VulnerabilityScore(models.Models):
+
+    #def vulnerabilityScoreCalculation():
+    
+  class Meta:
+    managed =  False
+    db_table = ''
+
+class TraumaDescription(models.Models):
+    #decrire le traumatisme psychologique
+    id  = models.SmallIntegerField(db_column='TraumaDescriptionId', primary_key=True)
+    trauma_description =  models.CharField(db_column='TraumaDescription', max_length = 150)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tblTraumaDescriptions'
+
+class DisplacementCondition(models.Models):
+    #decrire le traumatisme psychologique
+    id  = models.SmallIntegerField(db_column='DisplacementConditionId', primary_key=True)
+    displacement_cond =  models.CharField(db_column='DisplacementCondition', max_length = 150)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    class Meta:
+        managed = False
+        db_table = 'tblDisplacementCondition'
+
+class SupportType(models.Models):
+    #type de soutient recu
+    id  = models.SmallIntegerField(db_column='SupportTypeId', primary_key=True)
+    code = models.CharField(db_column= 'SupportCode',max_length='1', blank=False, null=False)
+    support_type =  models.CharField(db_column='SupportType', max_length = 150)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'tblSupportType'
+
 
 class IdentificationType(models.Model):
     code = models.CharField(db_column='IdentificationCode', primary_key=True, max_length=1)  # Field name made lowercase.
@@ -249,10 +312,45 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     health_facility = models.ForeignKey(
         location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True,
         related_name='insurees')
-
     offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
     audit_user_id = models.IntegerField(db_column='AuditUserID')
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
+
+    # new fields for IDPs implementations
+    identification_number = models.IntegerField(db_column='IdentificationNumber', blank=False, null=False)
+    profession_before =  models.ForeignKey(Profession, models.DO_NOTHING, db_column='ProfessionBefore', 
+    blank=False, null=False, related_name='insurees')
+    stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=False, null=False,help_text='time in the current city in months')
+    home_situation = models.ForeignKey(HomeSituation, models.DO_NOTHING, db_column = 'HomeSituation',
+    blank=False, null=False, related_name='insurees')
+    number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=False, null=False)
+    person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=False, null=False)
+    average_earning = models.ForeignKey(AverageEarning, models.DO_NOTHING, db_column='AverageEarning',
+    blank=True, null=True, related_name='insurees')
+    displace_person = models.BooleanField(db_column='IsDisplace', blank=False, null=False)
+    displacement_motif = models.CharField(db_column='DisplacementMotif', max_length=250, blank=False, null=False)
+    displacement_cond = models.ForeignKey(DisplacementCondition, models.DO_NOTHING, db_column='DisplacementCondition',
+    blank=False, null=False, related_name='insurees')
+    trauma_description = models.ForeignKey(TraumaDescription, models.DO_NOTHING, db_column='TraumaDescription',
+    blank=False, null=False, related_name='insurees')
+    person_incharge = models.IntegerField(db_column='PersonInCharge', blank=False, null=False)
+    disable_person = models.BooleanField(db_column='IsDisable', blank=False, null=False)
+    disable_care = models.BooleanField(db_column='CaryingAlone', blank=False, null=False)
+    medical_history = models.BooleanField(db_column='MedicalHistory', blank=False, null=False)
+    support_type = models.ForeignKey(SupportType, models.DO_NOTHING, db_column='SupportType',
+    blank=False, null=False, related_name='insurees')
+    material_support = models.ForeignKey(SupportType, models.DO_NOTHING, db_column='MaterialSupport',
+    blank=False, null=False, related_name='insurees')
+    MEAL_FREQ = (('0', '0-1'), ('1', '2-3'), ('2', '3+'))
+    NUM_CHILD = (('0', '0-5'), ('1', '6-15'), ('2', '15+'))
+    meal_frequency = models.CharField( max_length=1, choices=MEAL_FREQ, blank=False, default='0', db_column = 'MealFrequency')
+    child_number = models.CharField( max_length=1, choices=NUM_CHILD, blank=False, default='0', db_column = 'ChildNumber')
+    # ONG's infos
+    registration_date = core.fields.DateFields(db_column='RegistrationDate', blank=False, null=False)
+    ong_name = models.CharField(max_length=150,blank=False, null=False,db_column='NGOName')
+    ong_address = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAdress')
+    ong_resgister = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAgent')
+
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
