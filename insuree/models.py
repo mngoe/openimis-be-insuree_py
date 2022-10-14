@@ -8,6 +8,7 @@ from graphql import ResolveInfo
 from insuree.apps import InsureeConfig
 from location import models as location_models
 from location.models import UserDistrict
+from django.db.models import F ,Count, Value, Sum
 
 
 class Gender(models.Model):
@@ -167,70 +168,6 @@ class Education(models.Model):
         managed = False
         db_table = 'tblEducations'
 
-class HomeSituation(models.Models):
-    #question situation de l'habitat
-    id  = models.SmallIntegerField(db_column='HomeSituationId', primary_key=True)
-    home_situation =  models.CharField(db_column='HomeSituation', max_length = 50)
-    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-    class Meta:
-        managed =  False
-        db_table = 'tblHomeSituation'
-
-class AverageEarning(models.Models):
-    #combien gagnez vous en moyenne 
-    id  = models.SmallIntegerField(db_column='AverageEarningId', primary_key=True)
-    average_earning =  models.CharField(db_column='AverageEarning', max_length = 50)
-    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'tblAverageEarning'
-
-
-class VulnerabilityScore(models.Models):
-
-    #def vulnerabilityScoreCalculation():
-    
-  class Meta:
-    managed =  False
-    db_table = ''
-
-class TraumaDescription(models.Models):
-    #decrire le traumatisme psychologique
-    id  = models.SmallIntegerField(db_column='TraumaDescriptionId', primary_key=True)
-    trauma_description =  models.CharField(db_column='TraumaDescription', max_length = 150)
-    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'tblTraumaDescriptions'
-
-class DisplacementCondition(models.Models):
-    #decrire le traumatisme psychologique
-    id  = models.SmallIntegerField(db_column='DisplacementConditionId', primary_key=True)
-    displacement_cond =  models.CharField(db_column='DisplacementCondition', max_length = 150)
-    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-    class Meta:
-        managed = False
-        db_table = 'tblDisplacementCondition'
-
-class SupportType(models.Models):
-    #type de soutient recu
-    id  = models.SmallIntegerField(db_column='SupportTypeId', primary_key=True)
-    code = models.CharField(db_column= 'SupportCode',max_length='1', blank=False, null=False)
-    support_type =  models.CharField(db_column='SupportType', max_length = 150)
-    alt_language =  models.CharField(db_column='AltLanguage', max_length = 50, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'tblSupportType'
-
-
 class IdentificationType(models.Model):
     code = models.CharField(db_column='IdentificationCode', primary_key=True, max_length=1)  # Field name made lowercase.
     identification_type = models.CharField(db_column='IdentificationTypes', max_length=50)  # Field name made lowercase.
@@ -253,6 +190,26 @@ class Relation(models.Model):
     class Meta:
         managed = False
         db_table = 'tblRelations'
+
+class Questions(models.Model):
+    id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
+    question = models.CharField(db_column='Question', max_length = 100, blank=False, null=False)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    class Meta:
+        managed = False
+        db_table = 'tblQuestions'
+
+
+class Options(models.Models):
+    id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
+    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=False,null=False)
+    option = models.CharField(db_column='Options', max_length = 200, blank=False, null=False)
+    option_value = models.IntegerField(db_colum='Marks', blank=False, null=False, default=0)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
+    class Meta:
+        manage = False
+        db_table = 'tblOptions'
 
 
 class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
@@ -321,35 +278,22 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     profession_before =  models.ForeignKey(Profession, models.DO_NOTHING, db_column='ProfessionBefore', 
     blank=False, null=False, related_name='insurees')
     stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=False, null=False,help_text='time in the current city in months')
-    home_situation = models.ForeignKey(HomeSituation, models.DO_NOTHING, db_column = 'HomeSituation',
-    blank=False, null=False, related_name='insurees')
     number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=False, null=False)
     person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=False, null=False)
-    average_earning = models.ForeignKey(AverageEarning, models.DO_NOTHING, db_column='AverageEarning',
-    blank=True, null=True, related_name='insurees')
     displace_person = models.BooleanField(db_column='IsDisplace', blank=False, null=False)
     displacement_motif = models.CharField(db_column='DisplacementMotif', max_length=250, blank=False, null=False)
-    displacement_cond = models.ForeignKey(DisplacementCondition, models.DO_NOTHING, db_column='DisplacementCondition',
-    blank=False, null=False, related_name='insurees')
-    trauma_description = models.ForeignKey(TraumaDescription, models.DO_NOTHING, db_column='TraumaDescription',
-    blank=False, null=False, related_name='insurees')
     person_incharge = models.IntegerField(db_column='PersonInCharge', blank=False, null=False)
-    disable_person = models.BooleanField(db_column='IsDisable', blank=False, null=False)
     disable_care = models.BooleanField(db_column='CaryingAlone', blank=False, null=False)
     medical_history = models.BooleanField(db_column='MedicalHistory', blank=False, null=False)
-    support_type = models.ForeignKey(SupportType, models.DO_NOTHING, db_column='SupportType',
-    blank=False, null=False, related_name='insurees')
-    material_support = models.ForeignKey(SupportType, models.DO_NOTHING, db_column='MaterialSupport',
-    blank=False, null=False, related_name='insurees')
-    MEAL_FREQ = (('0', '0-1'), ('1', '2-3'), ('2', '3+'))
-    NUM_CHILD = (('0', '0-5'), ('1', '6-15'), ('2', '15+'))
-    meal_frequency = models.CharField( max_length=1, choices=MEAL_FREQ, blank=False, default='0', db_column = 'MealFrequency')
-    child_number = models.CharField( max_length=1, choices=NUM_CHILD, blank=False, default='0', db_column = 'ChildNumber')
     # ONG's infos
     registration_date = core.fields.DateFields(db_column='RegistrationDate', blank=False, null=False)
     ong_name = models.CharField(max_length=150,blank=False, null=False,db_column='NGOName')
     ong_address = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAdress')
     ong_resgister = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAgent')
+    # total points
+    @property
+    def total_score(self):
+        return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
 
 
     def is_head_of_family(self):
@@ -468,3 +412,12 @@ class PolicyRenewalDetail(core_models.VersionedModel):
     class Meta:
         managed = False
         db_table = 'tblPolicyRenewalDetails'
+
+class InsureeAnswers(models.Models):
+    id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
+    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=False,null=False)
+    insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=False,null=False)
+    insuree_answer = models.ForeignKey(Options, models.DO_NOTHING, db_column='Score', blank=False,null=False)
+    class Meta:
+        managed = False
+        db_table = 'tblInsureeAnswers'
