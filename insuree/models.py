@@ -1,3 +1,4 @@
+from email.policy import default
 import uuid
 
 import core
@@ -193,7 +194,7 @@ class Relation(models.Model):
 
 class Questions(models.Model):
     id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
-    question = models.CharField(db_column='Question', max_length = 100, blank=False, null=False)
+    question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
     class Meta:
@@ -201,14 +202,14 @@ class Questions(models.Model):
         db_table = 'tblQuestions'
 
 
-class Options(models.Models):
+class Options(models.Model):
     id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
     question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=False,null=False)
-    option = models.CharField(db_column='Options', max_length = 200, blank=False, null=False)
-    option_value = models.IntegerField(db_colum='Marks', blank=False, null=False, default=0)
+    option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
+    option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
     class Meta:
-        manage = False
+        managed = False
         db_table = 'tblOptions'
 
 
@@ -274,27 +275,25 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
 
     # new fields for IDPs implementations
-    identification_number = models.IntegerField(db_column='IdentificationNumber', blank=False, null=False)
-    profession_before =  models.ForeignKey(Profession, models.DO_NOTHING, db_column='ProfessionBefore', 
-    blank=False, null=False, related_name='insurees')
-    stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=False, null=False,help_text='time in the current city in months')
-    number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=False, null=False)
-    person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=False, null=False)
-    displace_person = models.BooleanField(db_column='IsDisplace', blank=False, null=False)
-    displacement_motif = models.CharField(db_column='DisplacementMotif', max_length=250, blank=False, null=False)
-    person_incharge = models.IntegerField(db_column='PersonInCharge', blank=False, null=False)
-    disable_care = models.BooleanField(db_column='CaryingAlone', blank=False, null=False)
-    medical_history = models.BooleanField(db_column='MedicalHistory', blank=False, null=False)
+    identification_number = models.IntegerField(db_column='IdentificationNumber', blank=True, null=True)
+    #profession_before =  models.ForeignKey(Profession, models.DO_NOTHING, db_column='ProfessionBefore', blank=False, null=False, related_name='insurees')
+    stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=True, null=True,help_text='time in the current city in months')
+    number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=True, null=True, default=0)
+    person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=True, null=True, default=0)
+    displace_person = models.BooleanField(db_column='IsDisplace', blank=True, null=True)
+    displacement_motif = models.CharField(db_column='DisplacementMotif', max_length=250, blank=True, null=True)
+    person_incharge = models.IntegerField(db_column='PersonInCharge', blank=True, null=True)
+    disable_care = models.BooleanField(db_column='CaryingAlone', blank=True, null=True)
+    medical_history = models.BooleanField(db_column='MedicalHistory', blank=True, null=True)
     # ONG's infos
-    registration_date = core.fields.DateFields(db_column='RegistrationDate', blank=False, null=False)
-    ong_name = models.CharField(max_length=150,blank=False, null=False,db_column='NGOName')
-    ong_address = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAdress')
-    ong_resgister = models.CharField(max_length=50,blank=False, null=False,db_column='NGOAgent')
+    registration_date = core.fields.DateField(db_column='RegistrationDate', blank=True, null=True)
+    ong_name = models.CharField(max_length=150,blank=True, null=True,db_column='NGOName')
+    ong_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAdress')
+    ong_resgister = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAgent')
     # total points
     @property
     def total_score(self):
         return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
-
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -413,11 +412,11 @@ class PolicyRenewalDetail(core_models.VersionedModel):
         managed = False
         db_table = 'tblPolicyRenewalDetails'
 
-class InsureeAnswers(models.Models):
+class InsureeAnswers(models.Model):
     id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
-    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=False,null=False)
-    insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=False,null=False)
-    insuree_answer = models.ForeignKey(Options, models.DO_NOTHING, db_column='Score', blank=False,null=False)
+    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=True,null=True)
+    insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
+    insuree_answer = models.ForeignKey(Options, models.DO_NOTHING, db_column='Score', blank=True,null=True)
     class Meta:
         managed = False
         db_table = 'tblInsureeAnswers'

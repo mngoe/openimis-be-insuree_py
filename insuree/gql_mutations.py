@@ -12,7 +12,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeAnswers, Questions, Options
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,27 @@ class InsureeBase:
     type_of_id_id = graphene.String(max_length=1, required=False)
     health_facility_id = graphene.Int(required=False)
     offline = graphene.Boolean(required=False)
-    json_ext = graphene.types.json.JSONString(required=False)
+    json_ext = graphene.types.json.JSONString(required=False),
+
+    # new fields for IDPs implementations
+    # identification_number = graphene.Int(required=False)
+    # profession_before =  graphene.Date(required=False)
+    # stayed_time = graphene.Int(required=False)
+    # number_of_rooms = graphene.Int(required=False)
+    # person_per_room = graphene.Int(required=False)
+    # displace_person = graphene.Boolean(required=False)
+    # displacement_motif = graphene.String(required=False)
+    # person_incharge = graphene.Int(required=False)
+    # disable_care = graphene.Boolean(required=False)
+    # medical_history = graphene.Boolean(required=False)
+    # registration_date = graphene.Date(required=False)
+    # ong_name =  graphene.String(required=False)
+    # ong_address = graphene.String(required=False)
+    # ong_resgister = graphene.String(required=False)
+    # total_score = graphene.Int(required=False)
+
+    
+
 
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
@@ -454,3 +474,22 @@ class ChangeInsureeFamilyMutation(OpenIMISMutation):
                 'message': _("insuree.mutation.failed_to_change_insuree_family"),
                 'detail': str(exc)}
             ]
+
+# Mutations for news fields
+
+# class CreateQuestionsMututations(OpenIMISMutation):
+# class UpdateQuestionsMututations(OpenIMISMutation):
+# class DeleteQuestionsMututations(OpenIMISMutation):
+# class SetQuestionsMututations(OpenIMISMutation):
+
+
+# class CreateOptionsMututations(OpenIMISMutation):
+# class UpdateOptionsMututations(OpenIMISMutation):
+# class DeleteOptionsMututations(OpenIMISMutation):
+# class SetOptionsMututations(OpenIMISMutation):
+
+
+# class CreateInsureeAnswersMututations(OpenIMISMutation):
+# class UpdateInsureeAnswersMututations(OpenIMISMutation):
+# class DeleteInsureeAnswersMututations(OpenIMISMutation):
+# class SetInsureeAnswersMututations(OpenIMISMutation):

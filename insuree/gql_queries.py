@@ -2,8 +2,8 @@ import graphene
 from graphene_django import DjangoObjectType
 
 from .apps import InsureeConfig
-from .models import Insuree, InsureePhoto, Education, Profession, Gender, IdentificationType, \
-    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation
+from .models import Insuree, InsureeAnswers, InsureePhoto, Education, Options, Profession, Gender, IdentificationType, \
+    Family, FamilyType, ConfirmationType, Questions, Relation, InsureePolicy, FamilyMutation, InsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
@@ -85,6 +85,42 @@ class RelationGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
+class QuestionsGQLType(DjangoObjectType): 
+
+    class Meta:
+        model = Questions
+        filter_fields = {
+            "question" : ["exact","istartwith","icontains","iexact","isnull"],
+            "alt_language" : ["exact","istartwith","icontains","iexact","isnull"]
+        }
+
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return Questions.get_queryset(queryset, info)
+
+
+class OptionsGQLType(DjangoObjectType):
+
+    class Meta:
+        model = Options
+        filter_fields = {
+            "option" : ["exact","istartwith","icontains","iexact","isnull"],
+            "option_value" : ["exact","istartwith","icontains","iexact","isnull"],
+            "alt_language" : ["exact","istartwith","icontains","iexact","isnull"]
+        }
+
+
+class InsureeAnswersGQLType(DjangoObjectType):
+
+    class Meta:
+        model = InsureeAnswers
+        filter_fields = {
+            "insuree_id": ["exact"],
+            "insuree_answer": ["exact","istartwith","icontains","iexact","isnull"]
+        }
 
 class InsureeGQLType(DjangoObjectType):
     age = graphene.Int(source='age')
@@ -129,6 +165,8 @@ class InsureeGQLType(DjangoObjectType):
             "marital": ["exact", "isnull"],
             "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+            #filter insuree with his score 
+            #"total_score": ["exact"],
             **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
             "photo": ["isnull"],
             **prefix_filterset("gender__", GenderGQLType._meta.filter_fields)
