@@ -276,7 +276,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
 
     # new fields for IDPs implementations
     identification_number = models.IntegerField(db_column='IdentificationNumber', blank=True, null=True)
-    #profession_before =  models.ForeignKey(Profession, models.DO_NOTHING, db_column='ProfessionBefore', blank=False, null=False, related_name='insurees')
+    profession_before =  models.CharField(db_column='ProfessionBefore',max_length=50,blank=True, null=True)
     stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=True, null=True,help_text='time in the current city in months')
     number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=True, null=True, default=0)
     person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=True, null=True, default=0)
@@ -288,12 +288,8 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     # ONG's infos
     registration_date = core.fields.DateField(db_column='RegistrationDate', blank=True, null=True)
     ong_name = models.CharField(max_length=150,blank=True, null=True,db_column='NGOName')
-    ong_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAdress')
+    ong_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAddress')
     ong_resgister = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAgent')
-    # total points
-    @property
-    def total_score(self):
-        return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -417,6 +413,10 @@ class InsureeAnswers(models.Model):
     question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
     insuree_answer = models.ForeignKey(Options, models.DO_NOTHING, db_column='Score', blank=True,null=True)
+    
+    @property
+    def total_score(self):
+        return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
     class Meta:
         managed = False
         db_table = 'tblInsureeAnswers'

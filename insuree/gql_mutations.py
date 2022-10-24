@@ -3,6 +3,7 @@ import uuid
 import pathlib
 import base64
 import graphene
+from numpy import require
 
 from insuree.services import validate_insuree_number, InsureeService, FamilyService
 
@@ -25,6 +26,12 @@ class PhotoInputType(InputObjectType):
     photo = graphene.String(required=False)
     filename = graphene.String(required=False)
     folder = graphene.String(required=False)
+
+
+class QuestionsInputType(InputObjectType):
+    id  = graphene.Int(required=False)
+    question = graphene.String(required=False)
+    alt_language =  graphene.String(required=False)
 
 
 class InsureeBase:
@@ -57,21 +64,21 @@ class InsureeBase:
     json_ext = graphene.types.json.JSONString(required=False),
 
     # new fields for IDPs implementations
-    # identification_number = graphene.Int(required=False)
-    # profession_before =  graphene.Date(required=False)
-    # stayed_time = graphene.Int(required=False)
-    # number_of_rooms = graphene.Int(required=False)
-    # person_per_room = graphene.Int(required=False)
-    # displace_person = graphene.Boolean(required=False)
-    # displacement_motif = graphene.String(required=False)
-    # person_incharge = graphene.Int(required=False)
-    # disable_care = graphene.Boolean(required=False)
-    # medical_history = graphene.Boolean(required=False)
-    # registration_date = graphene.Date(required=False)
-    # ong_name =  graphene.String(required=False)
-    # ong_address = graphene.String(required=False)
-    # ong_resgister = graphene.String(required=False)
-    # total_score = graphene.Int(required=False)
+    identification_number = graphene.Int(required=False)
+    profession_before =  graphene.Date(required=False)
+    stayed_time = graphene.Int(required=False)
+    number_of_rooms = graphene.Int(required=False)
+    person_per_room = graphene.Int(required=False)
+    displace_person = graphene.Boolean(required=False)
+    displacement_motif = graphene.String(required=False)
+    person_incharge = graphene.Int(required=False)
+    disable_care = graphene.Boolean(required=False)
+    medical_history = graphene.Boolean(required=False)
+    registration_date = graphene.Date(required=False)
+    ong_name =  graphene.String(required=False)
+    ong_address = graphene.String(required=False)
+    ong_resgister = graphene.String(required=False)
+    total_score = graphene.Int(required=False)
 
     
 
@@ -474,22 +481,3 @@ class ChangeInsureeFamilyMutation(OpenIMISMutation):
                 'message': _("insuree.mutation.failed_to_change_insuree_family"),
                 'detail': str(exc)}
             ]
-
-# Mutations for news fields
-
-# class CreateQuestionsMututations(OpenIMISMutation):
-# class UpdateQuestionsMututations(OpenIMISMutation):
-# class DeleteQuestionsMututations(OpenIMISMutation):
-# class SetQuestionsMututations(OpenIMISMutation):
-
-
-# class CreateOptionsMututations(OpenIMISMutation):
-# class UpdateOptionsMututations(OpenIMISMutation):
-# class DeleteOptionsMututations(OpenIMISMutation):
-# class SetOptionsMututations(OpenIMISMutation):
-
-
-# class CreateInsureeAnswersMututations(OpenIMISMutation):
-# class UpdateInsureeAnswersMututations(OpenIMISMutation):
-# class DeleteInsureeAnswersMututations(OpenIMISMutation):
-# class SetInsureeAnswersMututations(OpenIMISMutation):

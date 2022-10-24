@@ -43,7 +43,6 @@ class IdentificationTypeGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
-
 class EducationGQLType(DjangoObjectType):
     class Meta:
         model = Education
@@ -52,7 +51,6 @@ class EducationGQLType(DjangoObjectType):
         }
 
         exclude_fields = ('insurees',)
-
 
 class ProfessionGQLType(DjangoObjectType):
     class Meta:
@@ -93,14 +91,6 @@ class QuestionsGQLType(DjangoObjectType):
             "question" : ["exact","istartwith","icontains","iexact","isnull"],
             "alt_language" : ["exact","istartwith","icontains","iexact","isnull"]
         }
-
-        interfaces = (graphene.relay.Node,)
-        connection_class = ExtendedConnection
-
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        return Questions.get_queryset(queryset, info)
-
 
 class OptionsGQLType(DjangoObjectType):
 
@@ -166,7 +156,7 @@ class InsureeGQLType(DjangoObjectType):
             "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             #filter insuree with his score 
-            #"total_score": ["exact"],
+            #"total_score": ["exact",null],
             **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
             "photo": ["isnull"],
             **prefix_filterset("gender__", GenderGQLType._meta.filter_fields)
