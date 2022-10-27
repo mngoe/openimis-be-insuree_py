@@ -192,7 +192,7 @@ class Relation(models.Model):
         managed = False
         db_table = 'tblRelations'
 
-class Questions(models.Model):
+class Question(models.Model):
     id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
     question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
@@ -202,9 +202,9 @@ class Questions(models.Model):
         db_table = 'tblQuestions'
 
 
-class Options(models.Model):
+class Option(models.Model):
     id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
-    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=False,null=False)
+    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=False,null=False)
     option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
     option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
@@ -287,9 +287,15 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     medical_history = models.BooleanField(db_column='MedicalHistory', blank=True, null=True)
     # ONG's infos
     registration_date = core.fields.DateField(db_column='RegistrationDate', blank=True, null=True)
-    ong_name = models.CharField(max_length=150,blank=True, null=True,db_column='NGOName')
-    ong_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAddress')
-    ong_resgister = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAgent')
+    ngo_name = models.CharField(max_length=150,blank=True, null=True,db_column='NGOName')
+    ngo_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAddress')
+    ngo_agent = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAgent')
+    total_score = models.IntegerField(db_column='InsureeScore', default=0, null=True)
+
+    @classmethod
+    def total_score_cal(self):
+         self.total_score = InsureeAnswer.objects.filter(InsureeAnswer.insuree_id == self.id).aggregate(Sum('insuree_answer'))
+        #return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -408,15 +414,11 @@ class PolicyRenewalDetail(core_models.VersionedModel):
         managed = False
         db_table = 'tblPolicyRenewalDetails'
 
-class InsureeAnswers(models.Model):
+class InsureeAnswer(models.Model):
     id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
-    question_id = models.ForeignKey(Questions, models.DO_NOTHING, db_column='Question', blank=True,null=True)
+    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
-    insuree_answer = models.ForeignKey(Options, models.DO_NOTHING, db_column='Score', blank=True,null=True)
-    
-    @property
-    def total_score(self):
-        return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
+    insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='Score', blank=True,null=True)
     class Meta:
         managed = False
         db_table = 'tblInsureeAnswers'

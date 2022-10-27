@@ -51,6 +51,8 @@ class Query(graphene.ObjectType):
         family_id=graphene.Int(required=True),
         description="Checks that the specified family id is allowed to add more insurees (like a Policy limitation)"
     )
+
+    #make sure a policy can only be assed if the insuree reach the required score
     insuree_genders = graphene.List(GenderGQLType)
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
@@ -133,13 +135,13 @@ class Query(graphene.ObjectType):
         return Gender.objects.order_by('sort_order').all()
 
     def resolve_insuree_question(self,info, **kwargs):
-        return Questions.objects.order_by('sort_order').all()
+        return Question.object.order_by('sort_order').all()
 
     def resolve_insuree_options(self,info, **kwargs):
-        return Options.objects.order_by('sort_order').all()
+        return Option.objects.order_by('sort_order').all()
 
     def resolve_insuree_insureeAnswers(self,info, **kwargs):
-        return InsureeAnswers.objects.order_by('sort_order').all()
+        return InsureeAnswer.objects.order_by('sort_order').all()
 
     def resolve_insurees(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
