@@ -98,20 +98,6 @@ def reset_insuree_before_update(insuree):
     insuree.offline = None
     insuree.json_ext = None
     # new fields for IDPs implementations
-    insuree.identification_number =None
-    insuree.profession_before =  None
-    insuree.stayed_time =None
-    insuree.number_of_rooms =None
-    insuree.person_per_room =None
-    insuree.displace_person = None
-    insuree.displacement_motif =None
-    insuree.person_incharge= None
-    insuree.disable_care = None
-    insuree.medical_history = None
-    insuree.registration_date = None
-    insuree.ong_name = None
-    insuree.ong_address =None
-    insuree.ong_resgister =None
     insuree.total_score = None
 
 

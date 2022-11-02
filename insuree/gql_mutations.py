@@ -13,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeAnswers, Questions, Options
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeAnswer, Question, Option
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,6 @@ class PhotoInputType(InputObjectType):
     photo = graphene.String(required=False)
     filename = graphene.String(required=False)
     folder = graphene.String(required=False)
-
-
-class QuestionsInputType(InputObjectType):
-    id  = graphene.Int(required=False)
-    question = graphene.String(required=False)
-    alt_language =  graphene.String(required=False)
-
-
 class InsureeBase:
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)

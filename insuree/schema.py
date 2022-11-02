@@ -51,9 +51,9 @@ class Query(graphene.ObjectType):
         family_id=graphene.Int(required=True),
         description="Checks that the specified family id is allowed to add more insurees (like a Policy limitation)"
     )
-
-    #make sure a policy can only be assed if the insuree reach the required score
     insuree_genders = graphene.List(GenderGQLType)
+    insuree_questions = graphene.List(QuestionGQLType)
+    insuree_options = graphene.List(OptionGQLType)
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
         show_history=graphene.Boolean(),
@@ -62,16 +62,13 @@ class Query(graphene.ObjectType):
         client_mutation_id=graphene.String(),
         orderBy=graphene.List(of_type=graphene.String),
     )
+    insuree_answers = graphene.List(InsureeAnswerGQLType)
     identification_types = graphene.List(IdentificationTypeGQLType)
     educations = graphene.List(EducationGQLType)
     professions = graphene.List(ProfessionGQLType)
     family_types = graphene.List(FamilyTypeGQLType)
     confirmation_types = graphene.List(ConfirmationTypeGQLType)
     relations = graphene.List(RelationGQLType)
-    #adding gql
-    options = graphene.List(OptionsGQLType)
-    questions = graphene.List(QuestionsGQLType)
-    insuree_answer = graphene.List(InsureeAnswersGQLType)
     families = FamiliesConnectionField(
         FamilyGQLType,
         null_as_false_poverty=graphene.Boolean(),
@@ -134,14 +131,12 @@ class Query(graphene.ObjectType):
     def resolve_insuree_genders(self, info, **kwargs):
         return Gender.objects.order_by('sort_order').all()
 
-    def resolve_insuree_question(self,info, **kwargs):
-        return Question.object.order_by('sort_order').all()
+    def resolve_insuree_questions(self, info, **kwargs):
+        return Question.objects.order_by('sort_order').all()
 
-    def resolve_insuree_options(self,info, **kwargs):
+    def resolve_insuree_options(self, info, **kwargs):
         return Option.objects.order_by('sort_order').all()
 
-    def resolve_insuree_insureeAnswers(self,info, **kwargs):
-        return InsureeAnswer.objects.order_by('sort_order').all()
 
     def resolve_insurees(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
@@ -181,6 +176,9 @@ class Query(graphene.ObjectType):
 
     def resolve_professions(self, info, **kwargs):
         return Profession.objects.order_by('sort_order').all()
+
+    def resolve_answers(self, info, **kwargs):
+        return InsureeAnswer.objects.order_by('sort_order').all()
 
     def resolve_identification_types(self, info, **kwargs):
         return IdentificationType.objects.order_by('sort_order').all()

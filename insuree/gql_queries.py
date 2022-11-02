@@ -2,8 +2,8 @@ import graphene
 from graphene_django import DjangoObjectType
 
 from .apps import InsureeConfig
-from .models import Insuree, InsureeAnswers, InsureePhoto, Education, Options, Profession, Gender, IdentificationType, \
-    Family, FamilyType, ConfirmationType, Questions, Relation, InsureePolicy, FamilyMutation, InsureeMutation
+from .models import Insuree, InsureeAnswer, InsureePhoto, Education, Option, Profession, Gender, IdentificationType, \
+    Family, FamilyType, ConfirmationType, Question, Relation, InsureePolicy, FamilyMutation, InsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
@@ -33,6 +33,51 @@ class PhotoGQLType(DjangoObjectType):
         model = InsureePhoto
         filter_fields = {
             "id": ["exact"]
+        }
+
+class QuestionGQLType(DjangoObjectType):
+    question =  graphene.String()
+
+
+    def resolve_question(self, info):
+        return self.question
+
+    class Meta:
+        model = Question
+        filter_fields = {
+            "id":["exact"],
+            "question":["exact", "istartswith", "icontains", "iexact"]
+        }
+
+class OptionGQLType(DjangoObjectType):
+    option =  graphene.String()
+
+
+    def resolve_option(self, info):
+        return self.option
+
+    class Meta:
+        model = Option
+        filter_fields = {
+            "id":["exact"],
+            "option":["exact", "istartswith", "icontains", "iexact"]
+        }
+
+
+class InsureeAnswerGQLType(DjangoObjectType):
+    answer =  graphene.String()
+
+    #calculate a score here in a function
+
+    def resolve_answer(self, info):
+        return self.answer
+
+    class Meta:
+        model = InsureeAnswer
+        filter_fields = {
+            "id":["exact"],
+            "insuree_id": ["exact"],
+            "question_id":["exact", "istartswith", "icontains", "iexact"]
         }
 
 
@@ -83,39 +128,13 @@ class RelationGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
-class QuestionsGQLType(DjangoObjectType): 
-
-    class Meta:
-        model = Questions
-        filter_fields = {
-            "question" : ["exact","istartwith","icontains","iexact","isnull"],
-            "alt_language" : ["exact","istartwith","icontains","iexact","isnull"]
-        }
-
-class OptionsGQLType(DjangoObjectType):
-
-    class Meta:
-        model = Options
-        filter_fields = {
-            "option" : ["exact","istartwith","icontains","iexact","isnull"],
-            "option_value" : ["exact","istartwith","icontains","iexact","isnull"],
-            "alt_language" : ["exact","istartwith","icontains","iexact","isnull"]
-        }
-
-
-class InsureeAnswersGQLType(DjangoObjectType):
-
-    class Meta:
-        model = InsureeAnswers
-        filter_fields = {
-            "insuree_id": ["exact"],
-            "insuree_answer": ["exact","istartwith","icontains","iexact","isnull"]
-        }
-
 class InsureeGQLType(DjangoObjectType):
     age = graphene.Int(source='age')
     client_mutation_id = graphene.String()
     photo = PhotoGQLType()
+    question = QuestionGQLType()
+    option = OptionGQLType()
+    answer = InsureeAnswerGQLType()
 
     def resolve_current_village(self, info):
         if "location_loader" in info.context.dataloaders and self.current_village_id:
@@ -139,6 +158,15 @@ class InsureeGQLType(DjangoObjectType):
     def resolve_photo(self, info):
         return self.photo
 
+    def resolve_question(self, info):
+        return self.question
+
+    def resolve_option(self,info):
+        return self.option
+    
+    def resolve_answer(self, info):
+        return self.answer
+
     class Meta:
         model = Insuree
         filter_fields = {
@@ -152,14 +180,15 @@ class InsureeGQLType(DjangoObjectType):
             "head": ["exact"],
             "passport": ["exact", "istartswith", "icontains", "iexact", "isnull"],
             "gender__code": ["exact", "isnull"],
+            "question_id": ["exact"],
             "marital": ["exact", "isnull"],
             "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
-            #filter insuree with his score 
-            #"total_score": ["exact",null],
             **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
             "photo": ["isnull"],
-            **prefix_filterset("gender__", GenderGQLType._meta.filter_fields)
+            **prefix_filterset("gender__", GenderGQLType._meta.filter_fields),
+            #**prefix_filterset("question__", QuestionGQLType._meta.filter_fields),
+            #**prefix_filterset("insuree_id__", InsureeAnswerGQLType._meta.filter_fields)
         }
         interfaces = (graphene.relay.Node,)
         connection_class = ExtendedConnection

@@ -201,13 +201,14 @@ class Question(models.Model):
         managed = False
         db_table = 'tblQuestions'
 
-
+ 
 class Option(models.Model):
     id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
     question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=False,null=False)
     option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
     option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
     class Meta:
         managed = False
         db_table = 'tblOptions'
@@ -275,26 +276,13 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
 
     # new fields for IDPs implementations
-    identification_number = models.IntegerField(db_column='IdentificationNumber', blank=True, null=True)
-    profession_before =  models.CharField(db_column='ProfessionBefore',max_length=50,blank=True, null=True)
-    stayed_time = models.IntegerField(db_column='TimeInCurrentCity',blank=True, null=True,help_text='time in the current city in months')
-    number_of_rooms = models.IntegerField(db_column='NumberOfRooms', blank=True, null=True, default=0)
-    person_per_room = models.IntegerField(db_column='PersonPerRoom', blank=True, null=True, default=0)
-    displace_person = models.BooleanField(db_column='IsDisplace', blank=True, null=True)
-    displacement_motif = models.CharField(db_column='DisplacementMotif', max_length=250, blank=True, null=True)
-    person_incharge = models.IntegerField(db_column='PersonInCharge', blank=True, null=True)
-    disable_care = models.BooleanField(db_column='CaryingAlone', blank=True, null=True)
-    medical_history = models.BooleanField(db_column='MedicalHistory', blank=True, null=True)
-    # ONG's infos
-    registration_date = core.fields.DateField(db_column='RegistrationDate', blank=True, null=True)
-    ngo_name = models.CharField(max_length=150,blank=True, null=True,db_column='NGOName')
-    ngo_address = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAddress')
-    ngo_agent = models.CharField(max_length=50,blank=True, null=True,db_column='NGOAgent')
+    question = models.OneToOneField(Question, models.DO_NOTHING,
+                              db_column='QuestionID', blank=True, null=True)                    
     total_score = models.IntegerField(db_column='InsureeScore', default=0, null=True)
 
-    @classmethod
-    def total_score_cal(self):
-         self.total_score = InsureeAnswer.objects.filter(InsureeAnswer.insuree_id == self.id).aggregate(Sum('insuree_answer'))
+    # @classmethod
+    # def total_score_cal(self): put this in a query and return it
+    #      self.total_score = InsureeAnswer.objects.filter(InsureeAnswer.insuree_id == self.id).aggregate(Sum('insuree_answer'))
         #return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
 
     def is_head_of_family(self):
@@ -419,6 +407,7 @@ class InsureeAnswer(models.Model):
     question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
     insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='Score', blank=True,null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
     class Meta:
         managed = False
         db_table = 'tblInsureeAnswers'
