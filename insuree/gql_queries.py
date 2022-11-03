@@ -18,6 +18,14 @@ class GenderGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
+class AnswerGQLType(DjangoObjectType):
+    
+    class Meta:
+        model =  InsureeAnswer
+        filter_fields = {
+            "id": ["exact"],
+            "insuree_id" : ["exact"]
+            }
 
 class PhotoGQLType(DjangoObjectType):
     photo = graphene.String()
@@ -64,21 +72,7 @@ class OptionGQLType(DjangoObjectType):
         }
 
 
-class InsureeAnswerGQLType(DjangoObjectType):
-    answer =  graphene.String()
 
-    #calculate a score here in a function
-
-    def resolve_answer(self, info):
-        return self.answer
-
-    class Meta:
-        model = InsureeAnswer
-        filter_fields = {
-            "id":["exact"],
-            "insuree_id": ["exact"],
-            "question_id":["exact", "istartswith", "icontains", "iexact"]
-        }
 
 
 class IdentificationTypeGQLType(DjangoObjectType):
@@ -132,9 +126,6 @@ class InsureeGQLType(DjangoObjectType):
     age = graphene.Int(source='age')
     client_mutation_id = graphene.String()
     photo = PhotoGQLType()
-    question = QuestionGQLType()
-    option = OptionGQLType()
-    answer = InsureeAnswerGQLType()
 
     def resolve_current_village(self, info):
         if "location_loader" in info.context.dataloaders and self.current_village_id:
@@ -187,8 +178,6 @@ class InsureeGQLType(DjangoObjectType):
             **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
             "photo": ["isnull"],
             **prefix_filterset("gender__", GenderGQLType._meta.filter_fields),
-            #**prefix_filterset("question__", QuestionGQLType._meta.filter_fields),
-            #**prefix_filterset("insuree_id__", InsureeAnswerGQLType._meta.filter_fields)
         }
         interfaces = (graphene.relay.Node,)
         connection_class = ExtendedConnection

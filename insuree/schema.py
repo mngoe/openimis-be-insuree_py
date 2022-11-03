@@ -54,6 +54,7 @@ class Query(graphene.ObjectType):
     insuree_genders = graphene.List(GenderGQLType)
     insuree_questions = graphene.List(QuestionGQLType)
     insuree_options = graphene.List(OptionGQLType)
+    insuree_answers = graphene.List(AnswerGQLType)
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
         show_history=graphene.Boolean(),
@@ -62,7 +63,6 @@ class Query(graphene.ObjectType):
         client_mutation_id=graphene.String(),
         orderBy=graphene.List(of_type=graphene.String),
     )
-    insuree_answers = graphene.List(InsureeAnswerGQLType)
     identification_types = graphene.List(IdentificationTypeGQLType)
     educations = graphene.List(EducationGQLType)
     professions = graphene.List(ProfessionGQLType)
@@ -137,6 +137,10 @@ class Query(graphene.ObjectType):
     def resolve_insuree_options(self, info, **kwargs):
         return Option.objects.order_by('sort_order').all()
 
+    def resolve_insuree_answers(self,info, *kwargs):
+        return InsureeAnswer.objects.order_by('sort_order').all()
+
+
 
     def resolve_insurees(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
@@ -176,9 +180,6 @@ class Query(graphene.ObjectType):
 
     def resolve_professions(self, info, **kwargs):
         return Profession.objects.order_by('sort_order').all()
-
-    def resolve_answers(self, info, **kwargs):
-        return InsureeAnswer.objects.order_by('sort_order').all()
 
     def resolve_identification_types(self, info, **kwargs):
         return IdentificationType.objects.order_by('sort_order').all()

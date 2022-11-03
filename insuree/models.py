@@ -274,16 +274,12 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
     audit_user_id = models.IntegerField(db_column='AuditUserID')
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
-
     # new fields for IDPs implementations
     question = models.OneToOneField(Question, models.DO_NOTHING,
-                              db_column='QuestionID', blank=True, null=True)                    
-    total_score = models.IntegerField(db_column='InsureeScore', default=0, null=True)
+                              db_column='QuestionID', blank=True, null=True)   
+    answer = models.OneToOneField(Option, models.DO_NOTHING,
+                              db_column='Answer', blank=True, null=True)                 
 
-    # @classmethod
-    # def total_score_cal(self): put this in a query and return it
-    #      self.total_score = InsureeAnswer.objects.filter(InsureeAnswer.insuree_id == self.id).aggregate(Sum('insuree_answer'))
-        #return  InsureeAnswers.objects.filter(InsureeAnswers.insuree_id == self.id).aggregate(Sum('insuree_answer'))
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -404,10 +400,12 @@ class PolicyRenewalDetail(core_models.VersionedModel):
 
 class InsureeAnswer(models.Model):
     id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
-    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
+    question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
     insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='Score', blank=True,null=True)
+    total_score = models.IntegerField(db_column='InsureeScore', blank=True, null=True, default=0)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+ 
     class Meta:
         managed = False
         db_table = 'tblInsureeAnswers'
