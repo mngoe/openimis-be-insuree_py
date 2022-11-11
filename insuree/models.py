@@ -198,7 +198,7 @@ class Question(models.Model):
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblQuestions'
 
  
@@ -210,7 +210,7 @@ class Option(models.Model):
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblOptions'
 
 
@@ -279,7 +279,6 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
                               db_column='QuestionID', blank=True, null=True)   
     answer = models.OneToOneField(Option, models.DO_NOTHING,
                               db_column='Answer', blank=True, null=True)                 
-
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -407,5 +406,5 @@ class InsureeAnswer(models.Model):
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
  
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblInsureeAnswers'
