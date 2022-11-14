@@ -52,6 +52,9 @@ class Query(graphene.ObjectType):
         description="Checks that the specified family id is allowed to add more insurees (like a Policy limitation)"
     )
     insuree_genders = graphene.List(GenderGQLType)
+    insuree_questions = graphene.List(QuestionGQLType)
+    insuree_options = graphene.List(OptionGQLType)
+    insuree_answers = graphene.List(AnswerGQLType)
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
         show_history=graphene.Boolean(),
@@ -127,6 +130,17 @@ class Query(graphene.ObjectType):
 
     def resolve_insuree_genders(self, info, **kwargs):
         return Gender.objects.order_by('sort_order').all()
+
+    def resolve_insuree_questions(self, info, **kwargs):
+        return Question.objects.order_by('sort_order').all()
+
+    def resolve_insuree_options(self, info, **kwargs):
+        return Option.objects.order_by('sort_order').all()
+
+    def resolve_insuree_answers(self,info, *kwargs):
+        return InsureeAnswer.objects.order_by('sort_order').all()
+
+
 
     def resolve_insurees(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
@@ -263,7 +277,8 @@ class Mutation(graphene.ObjectType):
     delete_insurees = DeleteInsureesMutation.Field()
     remove_insurees = RemoveInsureesMutation.Field()
     set_family_head = SetFamilyHeadMutation.Field()
-    change_insuree_family = ChangeInsureeFamilyMutation.Field()
+    change_insuree_family = ChangeInsureeFamilyMutation.Field() 
+    #changes
 
 
 def on_family_mutation(kwargs, k='uuid'):
@@ -335,6 +350,7 @@ def on_mutation(sender, **kwargs):
         RemoveInsureesMutation._mutation_class: on_family_and_insurees_mutation,
         SetFamilyHeadMutation._mutation_class: on_family_mutation,
         ChangeInsureeFamilyMutation._mutation_class: on_family_and_insuree_mutation,
+        
     }.get(sender._mutation_class, lambda x: [])(kwargs)
 
 

@@ -97,6 +97,8 @@ def reset_insuree_before_update(insuree):
     insuree.health_facility = None
     insuree.offline = None
     insuree.json_ext = None
+    # new fields for IDPs implementations
+    insuree.total_score = None
 
 
 def reset_family_before_update(family):
@@ -305,3 +307,5 @@ class FamilyService:
             insuree_service.set_deleted(member)
         else:
             insuree_service.remove(member)
+
+#service pour les numeros

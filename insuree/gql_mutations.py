@@ -3,6 +3,7 @@ import uuid
 import pathlib
 import base64
 import graphene
+from numpy import require
 
 from insuree.services import validate_insuree_number, InsureeService, FamilyService
 
@@ -12,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeAnswer, Question, Option
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,6 @@ class PhotoInputType(InputObjectType):
     photo = graphene.String(required=False)
     filename = graphene.String(required=False)
     folder = graphene.String(required=False)
-
-
 class InsureeBase:
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)
@@ -54,7 +53,27 @@ class InsureeBase:
     type_of_id_id = graphene.String(max_length=1, required=False)
     health_facility_id = graphene.Int(required=False)
     offline = graphene.Boolean(required=False)
-    json_ext = graphene.types.json.JSONString(required=False)
+    json_ext = graphene.types.json.JSONString(required=False),
+
+    # new fields for IDPs implementations
+    identification_number = graphene.Int(required=False)
+    profession_before =  graphene.Date(required=False)
+    stayed_time = graphene.Int(required=False)
+    number_of_rooms = graphene.Int(required=False)
+    person_per_room = graphene.Int(required=False)
+    displace_person = graphene.Boolean(required=False)
+    displacement_motif = graphene.String(required=False)
+    person_incharge = graphene.Int(required=False)
+    disable_care = graphene.Boolean(required=False)
+    medical_history = graphene.Boolean(required=False)
+    registration_date = graphene.Date(required=False)
+    ong_name =  graphene.String(required=False)
+    ong_address = graphene.String(required=False)
+    ong_resgister = graphene.String(required=False)
+    total_score = graphene.Int(required=False)
+
+    
+
 
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):

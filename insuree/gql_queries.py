@@ -2,8 +2,8 @@ import graphene
 from graphene_django import DjangoObjectType
 
 from .apps import InsureeConfig
-from .models import Insuree, InsureePhoto, Education, Profession, Gender, IdentificationType, \
-    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation
+from .models import Insuree, InsureeAnswer, InsureePhoto, Education, Option, Profession, Gender, IdentificationType, \
+    Family, FamilyType, ConfirmationType, Question, Relation, InsureePolicy, FamilyMutation, InsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
@@ -18,6 +18,14 @@ class GenderGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
+class AnswerGQLType(DjangoObjectType):
+    
+    class Meta:
+        model =  InsureeAnswer
+        filter_fields = {
+            "id": ["exact"],
+            "insuree_id" : ["exact"]
+            }
 
 class PhotoGQLType(DjangoObjectType):
     photo = graphene.String()
@@ -35,6 +43,37 @@ class PhotoGQLType(DjangoObjectType):
             "id": ["exact"]
         }
 
+class QuestionGQLType(DjangoObjectType):
+    question =  graphene.String()
+
+
+    def resolve_question(self, info):
+        return self.question
+
+    class Meta:
+        model = Question
+        filter_fields = {
+            "id":["exact"],
+            "question":["exact", "istartswith", "icontains", "iexact"]
+        }
+
+class OptionGQLType(DjangoObjectType):
+    option =  graphene.String()
+
+
+    def resolve_option(self, info):
+        return self.option
+
+    class Meta:
+        model = Option
+        filter_fields = {
+            "id":["exact"],
+            "option":["exact", "istartswith", "icontains", "iexact"]
+        }
+
+
+
+
 
 class IdentificationTypeGQLType(DjangoObjectType):
     class Meta:
@@ -42,7 +81,6 @@ class IdentificationTypeGQLType(DjangoObjectType):
         filter_fields = {
             "code": ["exact"]
         }
-
 
 class EducationGQLType(DjangoObjectType):
     class Meta:
@@ -52,7 +90,6 @@ class EducationGQLType(DjangoObjectType):
         }
 
         exclude_fields = ('insurees',)
-
 
 class ProfessionGQLType(DjangoObjectType):
     class Meta:
@@ -85,7 +122,6 @@ class RelationGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
-
 class InsureeGQLType(DjangoObjectType):
     age = graphene.Int(source='age')
     client_mutation_id = graphene.String()
@@ -113,6 +149,15 @@ class InsureeGQLType(DjangoObjectType):
     def resolve_photo(self, info):
         return self.photo
 
+    def resolve_question(self, info):
+        return self.question
+
+    def resolve_option(self,info):
+        return self.option
+    
+    def resolve_answer(self, info):
+        return self.answer
+
     class Meta:
         model = Insuree
         filter_fields = {
@@ -126,12 +171,13 @@ class InsureeGQLType(DjangoObjectType):
             "head": ["exact"],
             "passport": ["exact", "istartswith", "icontains", "iexact", "isnull"],
             "gender__code": ["exact", "isnull"],
+            "question_id": ["exact"],
             "marital": ["exact", "isnull"],
             "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
             **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
             "photo": ["isnull"],
-            **prefix_filterset("gender__", GenderGQLType._meta.filter_fields)
+            **prefix_filterset("gender__", GenderGQLType._meta.filter_fields),
         }
         interfaces = (graphene.relay.Node,)
         connection_class = ExtendedConnection

@@ -1,3 +1,4 @@
+from email.policy import default
 import uuid
 
 import core
@@ -8,6 +9,7 @@ from graphql import ResolveInfo
 from insuree.apps import InsureeConfig
 from location import models as location_models
 from location.models import UserDistrict
+from django.db.models import F ,Count, Value, Sum
 
 
 class Gender(models.Model):
@@ -167,7 +169,6 @@ class Education(models.Model):
         managed = False
         db_table = 'tblEducations'
 
-
 class IdentificationType(models.Model):
     code = models.CharField(db_column='IdentificationCode', primary_key=True, max_length=1)  # Field name made lowercase.
     identification_type = models.CharField(db_column='IdentificationTypes', max_length=50)  # Field name made lowercase.
@@ -190,6 +191,27 @@ class Relation(models.Model):
     class Meta:
         managed = False
         db_table = 'tblRelations'
+
+class Question(models.Model):
+    id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
+    question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    class Meta:
+        managed = True
+        db_table = 'tblQuestions'
+
+ 
+class Option(models.Model):
+    id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
+    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=False,null=False)
+    option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
+    option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
+    alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    class Meta:
+        managed = True
+        db_table = 'tblOptions'
 
 
 class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
@@ -249,10 +271,14 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     health_facility = models.ForeignKey(
         location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True,
         related_name='insurees')
-
     offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
     audit_user_id = models.IntegerField(db_column='AuditUserID')
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
+    # new fields for IDPs implementations
+    question = models.OneToOneField(Question, models.DO_NOTHING,
+                              db_column='QuestionID', blank=True, null=True)   
+    answer = models.OneToOneField(Option, models.DO_NOTHING,
+                              db_column='Answer', blank=True, null=True)                 
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -370,3 +396,15 @@ class PolicyRenewalDetail(core_models.VersionedModel):
     class Meta:
         managed = False
         db_table = 'tblPolicyRenewalDetails'
+
+class InsureeAnswer(models.Model):
+    id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
+    question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
+    insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
+    insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='Score', blank=True,null=True)
+    total_score = models.IntegerField(db_column='InsureeScore', blank=True, null=True, default=0)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+ 
+    class Meta:
+        managed = True
+        db_table = 'tblInsureeAnswers'
