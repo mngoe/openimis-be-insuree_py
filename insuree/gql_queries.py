@@ -9,6 +9,7 @@ from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
 
 from .services import load_photo_file
+from django.db.models import  Sum
 
 
 class GenderGQLType(DjangoObjectType):
@@ -19,6 +20,12 @@ class GenderGQLType(DjangoObjectType):
         }
 
 class AnswerGQLType(DjangoObjectType):
+
+    #score?
+    def resolve_insuree_score(self,id):
+        print('test')
+        return InsureeAnswer.objects.filter(pk=id).aggregate(insure_total_score_count =  Sum(self.insuree_answer))
+        
     
     class Meta:
         model =  InsureeAnswer

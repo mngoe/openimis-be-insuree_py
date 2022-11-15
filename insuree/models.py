@@ -204,7 +204,7 @@ class Question(models.Model):
  
 class Option(models.Model):
     id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
-    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=False,null=False)
+    question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
     option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
@@ -277,8 +277,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     # new fields for IDPs implementations
     question = models.OneToOneField(Question, models.DO_NOTHING,
                               db_column='QuestionID', blank=True, null=True)   
-    answer = models.OneToOneField(Option, models.DO_NOTHING,
-                              db_column='Answer', blank=True, null=True)                 
+                 
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self

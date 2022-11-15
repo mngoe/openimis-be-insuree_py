@@ -141,7 +141,6 @@ class Query(graphene.ObjectType):
         return InsureeAnswer.objects.order_by('sort_order').all()
 
 
-
     def resolve_insurees(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
             raise PermissionDenied(_("unauthorized"))

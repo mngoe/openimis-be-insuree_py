@@ -55,23 +55,6 @@ class InsureeBase:
     offline = graphene.Boolean(required=False)
     json_ext = graphene.types.json.JSONString(required=False),
 
-    # new fields for IDPs implementations
-    identification_number = graphene.Int(required=False)
-    profession_before =  graphene.Date(required=False)
-    stayed_time = graphene.Int(required=False)
-    number_of_rooms = graphene.Int(required=False)
-    person_per_room = graphene.Int(required=False)
-    displace_person = graphene.Boolean(required=False)
-    displacement_motif = graphene.String(required=False)
-    person_incharge = graphene.Int(required=False)
-    disable_care = graphene.Boolean(required=False)
-    medical_history = graphene.Boolean(required=False)
-    registration_date = graphene.Date(required=False)
-    ong_name =  graphene.String(required=False)
-    ong_address = graphene.String(required=False)
-    ong_resgister = graphene.String(required=False)
-    total_score = graphene.Int(required=False)
-
     
 
 
