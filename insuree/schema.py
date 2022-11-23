@@ -54,7 +54,8 @@ class Query(graphene.ObjectType):
     insuree_genders = graphene.List(GenderGQLType)
     insuree_questions = graphene.List(QuestionGQLType)
     insuree_options = graphene.List(OptionGQLType)
-    insuree_answers = graphene.List(AnswerGQLType)
+    insuree_answers = graphene.List(InsureeAnswerGQLType)
+    insuree_score =  graphene.Field(InsureeScoreType, id = graphene.Int())
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
         show_history=graphene.Boolean(),
@@ -79,6 +80,7 @@ class Query(graphene.ObjectType):
         orderBy=graphene.List(of_type=graphene.String),
         additional_filter=graphene.JSONString(),
         officer=graphene.String()
+        #son score
     )
     family_members = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
@@ -137,8 +139,11 @@ class Query(graphene.ObjectType):
     def resolve_insuree_options(self, info, **kwargs):
         return Option.objects.order_by('sort_order').all()
 
-    def resolve_insuree_answers(self,info, *kwargs):
+    def resolve_insuree_answers(self,info,**kwargs):
         return InsureeAnswer.objects.order_by('sort_order').all()
+         
+    def resolve_insuree_score(self, info,id, **kwargs):
+        return InsureeAnswer.objects.filter(insuree_id=id).values("total_score")
 
 
     def resolve_insurees(self, info, **kwargs):
@@ -276,9 +281,7 @@ class Mutation(graphene.ObjectType):
     delete_insurees = DeleteInsureesMutation.Field()
     remove_insurees = RemoveInsureesMutation.Field()
     set_family_head = SetFamilyHeadMutation.Field()
-    change_insuree_family = ChangeInsureeFamilyMutation.Field() 
-    #changes
-
+    change_insuree_family = ChangeInsureeFamilyMutation.Field()
 
 def on_family_mutation(kwargs, k='uuid'):
     family_uuid = kwargs['data'].get('uuid', None)

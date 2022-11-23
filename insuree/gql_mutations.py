@@ -26,6 +26,15 @@ class PhotoInputType(InputObjectType):
     photo = graphene.String(required=False)
     filename = graphene.String(required=False)
     folder = graphene.String(required=False)
+
+class InsureeAnswerInputType(InputObjectType):
+    id = graphene.Int(required=False, read_only=True)
+    insuree_id = graphene.Int(require=True)
+    question = graphene.Int(required=False)
+    answer = graphene.Int(require=False)
+    score = graphene.Int(require=False)
+
+
 class InsureeBase:
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)
@@ -53,10 +62,8 @@ class InsureeBase:
     type_of_id_id = graphene.String(max_length=1, required=False)
     health_facility_id = graphene.Int(required=False)
     offline = graphene.Boolean(required=False)
-    json_ext = graphene.types.json.JSONString(required=False),
-
-    
-
+    json_ext = graphene.types.json.JSONString(required=False)
+    insuree_answer = graphene.Field(InsureeAnswerInputType, required=False)
 
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
@@ -87,6 +94,7 @@ class FamilyBase:
     contribution = graphene.types.json.JSONString(required=False)
 
     head_insuree = graphene.Field(FamilyHeadInsureeInputType, required=False)
+
 
 
 class FamilyInputType(FamilyBase, OpenIMISMutation.Input):
@@ -230,8 +238,7 @@ class DeleteFamiliesMutation(OpenIMISMutation):
         if len(errors) == 1:
             errors = errors[0]['list']
         return errors
-
-
+            
 class CreateInsureeMutation(OpenIMISMutation):
     """
     Create a new insuree

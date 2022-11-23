@@ -19,20 +19,23 @@ class GenderGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
-class AnswerGQLType(DjangoObjectType):
-
-    #score?
-    def resolve_insuree_score(self,id):
-        print('test')
-        return InsureeAnswer.objects.filter(pk=id).aggregate(insure_total_score_count =  Sum(self.insuree_answer))
-        
-    
+class InsureeAnswerGQLType(DjangoObjectType):    
     class Meta:
         model =  InsureeAnswer
         filter_fields = {
             "id": ["exact"],
-            "insuree_id" : ["exact"]
             }
+        
+class InsureeScoreType(DjangoObjectType):
+    class Meta:
+        model =  InsureeAnswer
+        filter_fields = {
+            "id": ["exact"],
+            "insuree_id" : ["exact"],
+            "total_score":["exact"]
+            
+        }
+
 
 class PhotoGQLType(DjangoObjectType):
     photo = graphene.String()
@@ -66,20 +69,21 @@ class QuestionGQLType(DjangoObjectType):
 
 class OptionGQLType(DjangoObjectType):
     option =  graphene.String()
-
+    question =  graphene.String()
 
     def resolve_option(self, info):
         return self.option
+
+    def resolve_question(self,info,id):
+        return Option.objects.filter(question_id=id)
 
     class Meta:
         model = Option
         filter_fields = {
             "id":["exact"],
-            "option":["exact", "istartswith", "icontains", "iexact"]
+            "option":["exact", "istartswith", "icontains", "iexact"],
+            "question": ["exact", "istartswith", "icontains", "iexact"]
         }
-
-
-
 
 
 class IdentificationTypeGQLType(DjangoObjectType):
