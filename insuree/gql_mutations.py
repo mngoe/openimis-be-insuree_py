@@ -64,7 +64,7 @@ class InsureeBase:
     offline = graphene.Boolean(required=False)
     json_ext = graphene.types.json.JSONString(required=False)
     insuree_answer = graphene.Field(InsureeAnswerInputType, required=False)
-
+  
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
     pass

@@ -277,7 +277,19 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     # new fields for IDPs implementations
     question = models.OneToOneField(Question, models.DO_NOTHING,
                               db_column='QuestionID', blank=True, null=True)   
-                 
+    total_score = models.IntegerField(db_column='InsureeScore', blank=True, null=True, default=0)
+
+    @property
+    def calculate_score(self,*args,**kwargs):
+        kwargs = {
+            "insuree_id" : self.insuree_id
+        }
+        result = InsureeAnswer.objects.filter(**kwargs).aggregate(sum=Sum(self.insuree_answer.option_value))
+        return result.get("sum")
+    def save(self, *args, **kwargs):
+        self.total_score =  self.calculate_score
+        super(InsureeAnswer,self).save(*args, **kwargs)  
+
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -401,20 +413,8 @@ class InsureeAnswer(models.Model):
     question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, on_delete=models.DO_NOTHING, db_column='InsureeID', blank=True,null=True)
     insuree_answer = models.ForeignKey(Option , models.DO_NOTHING, db_column='Score', blank=True,null=True)
-    total_score = models.IntegerField(db_column='InsureeScore', blank=True, null=True, default=0)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
-
-    @property
-    def calculate_score(self,*args,**kwargs):
-        kwargs = {
-            "insuree_id" : self.insuree_id
-        }
-        result = InsureeAnswer.objects.filter(**kwargs).aggregate(sum=Sum(self.insuree_answer.option_value))
-        return result.get("sum")
-    
-    def save(self, *args, **kwargs):
-        self.total_score =  self.calculate_score
-        super(InsureeAnswer,self).save(*args, **kwargs)   
+       
     class Meta:
         managed = True
         db_table = 'tblInsureeAnswers'
