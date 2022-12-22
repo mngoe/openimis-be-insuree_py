@@ -193,10 +193,18 @@ class Relation(models.Model):
         db_table = 'tblRelations'
 
 class Question(models.Model):
+    TYPES = (
+        ("1","Text"),
+        ("2","Checkbox"),
+        ("3","Radio"),
+        ("4","Dropdown")
+    )
     id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
     question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
-    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    question_type = models.CharField(db_column='QuestionType',max_length = 100, choices=TYPES, default="1", blank=True, null=True)
+    sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True),
+
     class Meta:
         managed = True
         db_table = 'tblQuestions'
@@ -401,8 +409,7 @@ class InsureeAnswer(models.Model):
     id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
     question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
-    insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='Score', blank=True,null=True)
-    total_score = models.IntegerField(db_column='InsureeScore', blank=True, null=True, default=0)
+    insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='OptionScore', blank=True,null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
  
     class Meta:
