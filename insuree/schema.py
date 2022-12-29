@@ -132,7 +132,7 @@ class Query(graphene.ObjectType):
         return Gender.objects.order_by('sort_order').all()
 
     def resolve_insuree_questions(self, info, **kwargs):
-        return Question.objects.order_by('sort_order').all()
+        return Question.objects.order_by('id').all()
 
     def resolve_insuree_options(self, info, **kwargs):
         return Option.objects.order_by('sort_order').all()
