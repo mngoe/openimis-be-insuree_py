@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 
 from core.signals import register_service_signal
 from insuree.apps import InsureeConfig
-from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy
+from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy, InsureeAnswer
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,32 @@ def reset_family_before_update(family):
     family.confirmation_type = None
     family.json_ext = None
 
+def handle_insuree_answer(user, now, insuree, data):
+    insuree_answer = insuree.insuree_answer 
+    data['audit_user_id'] = user.id_for_audit
+    data['answer_date'] = now
+    data['insuree_id'] = insuree.id
+    if insuree_answer:
+        insuree_answer.save_history()
+        insuree_answer.question = None
+        insuree_answer.insuree_id = None
+        insuree_answer.insuree_answer = None
+        insuree_answer.officer_id = None
+        insuree_answer.audit_user_id = None
+        insuree_answer.answer_date = None
+        [setattr(insuree_answer, key, data[key]) for key in data if key != 'id']
+    else:
+        insuree_answer = InsureeAnswer.objects.create(**data)
+    insuree_answer.save()
+    return insuree_answer
+
+def calculate_insuree_total_score(user,insuree, data):
+    total_score = insuree.total_score
+    current_insuree_record = InsureeAnswer.objects.filter(insuree.id)
+    total_score = sum([item.insuree_answer.option_value for item in current_insuree_record])   
+    print(total_score)
+    return total_score
+
 
 def handle_insuree_photo(user, now, insuree, data):
     insuree_photo = insuree.photo
@@ -140,6 +166,14 @@ def handle_insuree_photo(user, now, insuree, data):
         insuree_photo = InsureePhoto.objects.create(**data)
     insuree_photo.save()
     return insuree_photo
+
+def answer_changed(insuree_answer,data):
+    return (not insuree_answer and data) or \
+           (data and insuree_answer and insuree_answer.date != data.get('answer_date', None)) or \
+           (data and insuree_answer and insuree_answer.officer_id != data.get('officer_id', None)) or \
+           (data and insuree_answer and insuree_answer.question != data.get('question', None)) or \
+           (data and insuree_answer and insuree_answer.insuree_id != data.get('insuree_id', None)) or \
+           (data and insuree_answer and insuree_answer.insuree_answer != data.get('insuree_answer', None))
 
 
 def photo_changed(insuree_photo, data):
@@ -186,11 +220,14 @@ class InsureeService:
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
         photo = data.pop('photo', None)
+        insuree_answer = data.pop('insuree_answer', None)
         from core import datetime
         now = datetime.datetime.now()
         data['audit_user_id'] = self.user.id_for_audit
         data['validity_from'] = now
+        data['total_score'] =  calculate_insuree_total_score
         insuree_uuid = data.pop('uuid', None)
+        print(data['total_score'])
         if insuree_uuid:
             insuree = Insuree.objects.prefetch_related("photo").get(uuid=insuree_uuid)
             insuree.save_history()
@@ -205,6 +242,11 @@ class InsureeService:
             else:
                 insuree = Insuree.objects.create(**data)
         insuree.save()
+        #create insuree answer when creating an insuree
+        insuree_answer = handle_insuree_answer(self.user, now, insuree, insuree_answer)
+        if insuree_answer:
+            insuree_answer = insuree_answer
+            insuree.save()
         photo = handle_insuree_photo(self.user, now, insuree, photo)
         if photo:
             insuree.photo = photo
@@ -307,5 +349,3 @@ class FamilyService:
             insuree_service.set_deleted(member)
         else:
             insuree_service.remove(member)
-
-#service pour les numeros
