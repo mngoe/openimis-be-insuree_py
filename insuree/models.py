@@ -194,7 +194,7 @@ class Relation(models.Model):
 
 class Question(models.Model):
     TYPES = (
-        ("Texte","Text"),
+        ("Text","Text"),
         ("Checkbox","Checkbox"),
         ("Radio","Radio"),
         ("Dropdown","Dropdown")
