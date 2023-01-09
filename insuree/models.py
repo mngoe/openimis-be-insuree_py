@@ -194,10 +194,10 @@ class Relation(models.Model):
 
 class Question(models.Model):
     TYPES = (
-        ("1","Text"),
-        ("2","Checkbox"),
-        ("3","Radio"),
-        ("4","Dropdown")
+        ("Text","Text"),
+        ("Checkbox","Checkbox"),
+        ("Radio","Radio"),
+        ("Dropdown","Dropdown")
     )
     id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
     question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
