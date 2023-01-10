@@ -63,7 +63,7 @@ class InsureeBase:
     health_facility_id = graphene.Int(required=False)
     offline = graphene.Boolean(required=False)
     json_ext = graphene.types.json.JSONString(required=False)
-    insuree_answer = graphene.Field(InsureeAnswerInputType, required=False)
+    insuree_answer = graphene.List(InsureeAnswerInputType, required=False)
     total_score  = graphene.Int(required=False)
   
 
@@ -161,21 +161,21 @@ class CreateFamilyMutation(OpenIMISMutation):
             client_mutation_id = data.get("client_mutation_id")
             family = update_or_create_family(data, user)
             FamilyMutation.object_mutated(user, client_mutation_id=client_mutation_id, family=family)
-            # if type(user) is AnonymousUser or not user.id:
-            #     raise ValidationError(
-            #         _("mutation.authentication_required"))
-            # if not user.has_perms(InsureeConfig.gql_mutation_create_families_perms):
-            #     raise PermissionDenied(_("unauthorized"))
-            # data['audit_user_id'] = user.id_for_audit
-            # from core.utils import TimeUtils
-            # data['validity_from'] = TimeUtils.now()
-            # client_mutation_id = data.get("client_mutation_id")
-            # # Validate insuree number right away
-            # errors = validate_insuree_number(data.get("head_insuree", {}).get("chf_id", None), True)
-            # if errors:
-            #     return errors
-            # family = update_or_create_family(data, user)
-            # FamilyMutation.object_mutated(user, client_mutation_id=client_mutation_id, family=family)
+            if type(user) is AnonymousUser or not user.id:
+                raise ValidationError(
+                    _("mutation.authentication_required"))
+            if not user.has_perms(InsureeConfig.gql_mutation_create_families_perms):
+                raise PermissionDenied(_("unauthorized"))
+            data['audit_user_id'] = user.id_for_audit
+            from core.utils import TimeUtils
+            data['validity_from'] = TimeUtils.now()
+            client_mutation_id = data.get("client_mutation_id")
+            # Validate insuree number right away
+            errors = validate_insuree_number(data.get("head_insuree", {}).get("chf_id", None), True)
+            if errors:
+                return errors
+            family = update_or_create_family(data, user)
+            FamilyMutation.object_mutated(user, client_mutation_id=client_mutation_id, family=family)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_family")
