@@ -13,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeAnswer, Question, Option
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, Question, Option
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ class PhotoInputType(InputObjectType):
     photo = graphene.String(required=False)
     filename = graphene.String(required=False)
     folder = graphene.String(required=False)
+
 class InsureeBase:
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)
@@ -56,25 +57,9 @@ class InsureeBase:
     json_ext = graphene.types.json.JSONString(required=False),
 
     # new fields for IDPs implementations
-    identification_number = graphene.Int(required=False)
-    profession_before =  graphene.Date(required=False)
-    stayed_time = graphene.Int(required=False)
-    number_of_rooms = graphene.Int(required=False)
-    person_per_room = graphene.Int(required=False)
-    displace_person = graphene.Boolean(required=False)
-    displacement_motif = graphene.String(required=False)
-    person_incharge = graphene.Int(required=False)
-    disable_care = graphene.Boolean(required=False)
-    medical_history = graphene.Boolean(required=False)
-    registration_date = graphene.Date(required=False)
-    ong_name =  graphene.String(required=False)
-    ong_address = graphene.String(required=False)
-    ong_resgister = graphene.String(required=False)
     total_score = graphene.Int(required=False)
 
     
-
-
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
     pass
@@ -146,6 +131,7 @@ def update_or_create_family(data, user):
     data.pop('client_mutation_id', None)
     data.pop('client_mutation_label', None)
     return FamilyService(user).create_or_update(data)
+
 
 
 class CreateFamilyMutation(OpenIMISMutation):
@@ -258,7 +244,6 @@ class CreateInsureeMutation(OpenIMISMutation):
 
     class Input(CreateInsureeInputType):
         pass
-
     @classmethod
     def async_mutate(cls, user, **data):
         try:
@@ -272,7 +257,7 @@ class CreateInsureeMutation(OpenIMISMutation):
             data['validity_from'] = TimeUtils.now()
             client_mutation_id = data.get("client_mutation_id")
             # Validate insuree number right away
-            errors = validate_insuree_number(data.get("chf_id", None), True)
+            errors = validate_insuree_number(data.get("chf_id", None), True)         
             if errors:
                 return errors
             insuree = update_or_create_insuree(data, user)

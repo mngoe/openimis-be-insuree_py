@@ -84,6 +84,8 @@ class InsureeConfig(AppConfig):
         self._configure_renewal(cfg)
         self._configure_photo_root(cfg)
 
+        from insuree import signals
+     
     # Getting these at runtime for easier testing
     @classmethod
     def get_insuree_number_validator(cls):

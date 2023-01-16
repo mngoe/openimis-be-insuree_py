@@ -204,13 +204,13 @@ class InsureeService:
                 raise Exception("Invalid insuree number")
             else:
                 insuree = Insuree.objects.create(**data)
-        insuree.save()
+        insuree.save()  
         photo = handle_insuree_photo(self.user, now, insuree, photo)
         if photo:
             insuree.photo = photo
             insuree.photo_date = photo.date
             insuree.save()
-        return insuree
+        return insuree    
 
     def remove(self, insuree):
         try:
