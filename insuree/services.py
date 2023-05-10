@@ -188,9 +188,10 @@ def create_or_update_insuree_aswers(insuree, datas, insuree_uuid):
             id=data.get('questionId', 0)
         )
         data.pop('answerId', None)
+        data.pop('optionMark', None)
         data.pop('questionId', None)
         data['insuree_id'] = insuree
-        data['insuree_answer'] = choice
+        data['insuree_answer'] = choice.id
         data['question'] = question
         if insuree_uuid:
             # delete the old answers for this insuree
@@ -246,7 +247,6 @@ class InsureeService:
             )
             if question:
                 codes = [
-                    'health_status',
                     'nutrition_status',
                     'displacement_cond',
                     'f_support',
@@ -256,6 +256,11 @@ class InsureeService:
                     ]
                 if question.code in codes:
                     score += choice.option_value
+                elif question.code == 'health_status':
+                    if answer.get('answerId', None) == 1:
+                        score += 5
+                    else:
+                        score += 1
                 else:
                     if question.code == 'nb_person_living':
                         nb_person_living = answer.get('answerId', None)

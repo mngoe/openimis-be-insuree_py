@@ -54,7 +54,12 @@ class Query(graphene.ObjectType):
     insuree_genders = graphene.List(GenderGQLType)
     insuree_questions = graphene.List(QuestionGQLType)
     insuree_options = graphene.List(OptionGQLType)
-    insuree_answers = graphene.List(AnswerGQLType)
+    insuree_answers = OrderedDjangoFilterConnectionField(
+        InsureeAnswerGQLType,
+        diagnosisVariance=graphene.Int(),
+        code_is_not=graphene.String(),
+        orderBy=graphene.List(of_type=graphene.String)
+    )
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
         show_history=graphene.Boolean(),
@@ -137,8 +142,12 @@ class Query(graphene.ObjectType):
     def resolve_insuree_options(self, info, **kwargs):
         return Option.objects.order_by('sort_order').all()
 
-    def resolve_insuree_answers(self,info, *kwargs):
-        return InsureeAnswer.objects.order_by('sort_order').all()
+    def resolve_insuree_answers(self,info, **kwargs):
+        filters = []
+        ids = kwargs.get('id', None)
+        if ids:
+            filters.append(Q(id=ids))
+        return gql_optimizer.query(InsureeAnswer.objects.filter(*filters).all(), info)
 
 
 

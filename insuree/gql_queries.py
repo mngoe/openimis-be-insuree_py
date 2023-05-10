@@ -18,15 +18,6 @@ class GenderGQLType(DjangoObjectType):
             "code": ["exact"]
         }
 
-class AnswerGQLType(DjangoObjectType):
-    
-    class Meta:
-        model =  InsureeAnswer
-        filter_fields = {
-            "id": ["exact"],
-            "insuree_id" : ["exact"]
-            }
-
 class PhotoGQLType(DjangoObjectType):
     photo = graphene.String()
 
@@ -154,9 +145,6 @@ class InsureeGQLType(DjangoObjectType):
 
     def resolve_option(self,info):
         return self.option
-    
-    def resolve_answer(self, info):
-        return self.answer
 
     class Meta:
         model = Insuree
@@ -190,6 +178,16 @@ class InsureeGQLType(DjangoObjectType):
     def get_queryset(cls, queryset, info):
         return Insuree.get_queryset(queryset, info)
 
+class InsureeAnswerGQLType(DjangoObjectType):
+    
+    class Meta:
+        model =  InsureeAnswer
+        filter_fields = {
+            "id": ["exact"],
+            **prefix_filterset("insuree_id__", InsureeGQLType._meta.filter_fields),
+            }
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
 
 class FamilyGQLType(DjangoObjectType):
     client_mutation_id = graphene.String()

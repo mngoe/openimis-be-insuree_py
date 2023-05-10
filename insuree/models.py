@@ -412,7 +412,7 @@ class InsureeAnswer(models.Model):
     id = models.AutoField(db_column='InsureeChoiceId', primary_key=True)
     question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
-    insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='OptionScore', blank=True,null=True)
+    insuree_answer = models.IntegerField(db_column='Answer', blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
  
     class Meta:
