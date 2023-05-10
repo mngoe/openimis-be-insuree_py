@@ -199,11 +199,12 @@ class Question(models.Model):
         ("Radio","Radio"),
         ("Dropdown","Dropdown")
     )
-    id  = models.SmallIntegerField(db_column='QuestionID', primary_key=True)
+    id  = models.AutoField(db_column='QuestionID', primary_key=True)
     question = models.CharField(db_column='Question', max_length = 100, blank=True, null=True)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 100, blank=True, null=True)
     question_type = models.CharField(db_column='QuestionType',max_length = 100, choices=TYPES, default="1", blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True),
+    code = models.CharField(db_column='Code', max_length=50, blank=True, null=True)
 
     class Meta:
         managed = True
@@ -211,12 +212,13 @@ class Question(models.Model):
 
  
 class Option(models.Model):
-    id  = models.SmallIntegerField(db_column='OptionID', primary_key=True)
+    id  = models.AutoField(db_column='OptionID', primary_key=True)
     question_id = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=False,null=False)
     option = models.CharField(db_column='Options', max_length = 200, blank=True, null=True)
     option_value = models.IntegerField(db_column='OptionMark', blank=True, null=True, default=0)
     alt_language =  models.CharField(db_column='AltLanguage', max_length = 200, blank=True, null=True)
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)
+    code = models.CharField(db_column='Code', max_length=50, blank=True, null=True)
     class Meta:
         managed = True
         db_table = 'tblOptions'
@@ -283,10 +285,11 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     audit_user_id = models.IntegerField(db_column='AuditUserID')
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
     # new fields for IDPs implementations
-    question = models.OneToOneField(Question, models.DO_NOTHING,
-                              db_column='QuestionID', blank=True, null=True)   
-    answer = models.OneToOneField(Option, models.DO_NOTHING,
-                              db_column='Answer', blank=True, null=True)                 
+    # question = models.OneToOneField(Question, models.DO_NOTHING,
+    #                           db_column='QuestionID', blank=True, null=True)
+    # answer = models.OneToOneField(Option, models.DO_NOTHING,
+                            #   db_column='Answer', blank=True, null=True)
+    score = models.IntegerField(db_column='Score', blank=True, null=True, default=0)
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self
@@ -324,7 +327,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         return queryset
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblInsuree'
 
 
@@ -406,7 +409,7 @@ class PolicyRenewalDetail(core_models.VersionedModel):
         db_table = 'tblPolicyRenewalDetails'
 
 class InsureeAnswer(models.Model):
-    id = models.SmallIntegerField(db_column='InsureeChoiceId', primary_key=True)
+    id = models.AutoField(db_column='InsureeChoiceId', primary_key=True)
     question = models.ForeignKey(Question, models.DO_NOTHING, db_column='Question', blank=True,null=True)
     insuree_id = models.ForeignKey(Insuree, models.DO_NOTHING, db_column='Insuree', blank=True,null=True)
     insuree_answer = models.ForeignKey(Option, models.DO_NOTHING, db_column='OptionScore', blank=True,null=True)

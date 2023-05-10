@@ -10,7 +10,8 @@ from django.utils.translation import gettext as _
 
 from core.signals import register_service_signal
 from insuree.apps import InsureeConfig
-from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy
+from insuree.models import InsureePhoto, PolicyRenewalDetail,\
+    Insuree, Family, InsureePolicy, InsureeAnswer, Question, Option
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,27 @@ def load_photo_file(file_dir, file_name):
     with open(photo_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
+def create_or_update_insuree_aswers(insuree, datas, insuree_uuid):
+    for data in datas:
+        choice = Option.objects.get(
+            id=data.get('answerId', 0)
+        )
+        question = Question.objects.get(
+            id=data.get('questionId', 0)
+        )
+        data.pop('answerId', None)
+        data.pop('questionId', None)
+        data['insuree_id'] = insuree
+        data['insuree_answer'] = choice
+        data['question'] = question
+        if insuree_uuid:
+            # delete the old answers for this insuree
+            InsureeAnswer.objects.filter(
+                insuree_id=insuree.id
+            ).delete()
+        insuree_answer = InsureeAnswer.objects.create(**data)
+        insuree_answer.save()
+    return insuree_answer
 
 class InsureeService:
     def __init__(self, user):
@@ -191,6 +213,7 @@ class InsureeService:
         data['audit_user_id'] = self.user.id_for_audit
         data['validity_from'] = now
         insuree_uuid = data.pop('uuid', None)
+        insuree_answers = data.pop('insureeAnswers', None)
         if insuree_uuid:
             insuree = Insuree.objects.prefetch_related("photo").get(uuid=insuree_uuid)
             insuree.save_history()
@@ -210,6 +233,52 @@ class InsureeService:
             insuree.photo = photo
             insuree.photo_date = photo.date
             insuree.save()
+        score = 0
+        nb_person_living = False
+        nb_rooms = False
+        earn_amount = 1
+        for answer in insuree_answers:
+            question = Question.objects.get(
+                id=answer.get('questionId', 0)
+            )
+            choice = Option.objects.get(
+                id=answer.get('answerId', 0)
+            )
+            if question:
+                codes = [
+                    'health_status',
+                    'nutrition_status',
+                    'displacement_cond',
+                    'f_support',
+                    'm_support',
+                    'h_support',
+                    'displacement_cond'
+                    ]
+                if question.code in codes:
+                    score += choice.option_value
+                else:
+                    if question.code == 'nb_person_living':
+                        nb_person_living = answer.get('answerId', None)
+                    if question.code == 'nb_person_living':
+                        nb_rooms = answer.get('answerId', None)
+                    if question.code == 'earn_amount':
+                        earn_amount = choice.option_value
+        print("premier score ", score)
+        print("nb_person_living ", nb_person_living)
+        print("nb_rooms ", nb_rooms)
+        print("earn_amount ", earn_amount)
+        if nb_rooms and nb_person_living and nb_rooms > 0:
+            ratio = nb_person_living / nb_rooms
+            if ratio < 3:
+                score+=1
+            elif ratio < 6:
+                score+=3
+            elif ratio < 15:
+                score+=5
+        print("score non multiplie", score)
+        score *= earn_amount
+        print("SCORE ", score)
+        create_or_update_insuree_aswers(insuree, insuree_answers, insuree_uuid)
         return insuree
 
     def remove(self, insuree):
