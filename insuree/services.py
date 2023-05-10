@@ -279,6 +279,8 @@ class InsureeService:
         score *= earn_amount
         print("SCORE ", score)
         create_or_update_insuree_aswers(insuree, insuree_answers, insuree_uuid)
+        insuree.score = score
+        insuree.save()
         return insuree
 
     def remove(self, insuree):
