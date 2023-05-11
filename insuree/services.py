@@ -180,6 +180,11 @@ def load_photo_file(file_dir, file_name):
         return base64.b64encode(f.read()).decode("utf-8")
 
 def create_or_update_insuree_aswers(insuree, datas, insuree_uuid):
+    if insuree_uuid:
+        # delete the old answers for this insuree
+        InsureeAnswer.objects.filter(
+            insuree_id=insuree.id
+        ).delete()
     for data in datas:
         choice = Option.objects.get(
             id=data.get('answerId', 0)
@@ -193,11 +198,6 @@ def create_or_update_insuree_aswers(insuree, datas, insuree_uuid):
         data['insuree_id'] = insuree
         data['insuree_answer'] = choice.id
         data['question'] = question
-        if insuree_uuid:
-            # delete the old answers for this insuree
-            InsureeAnswer.objects.filter(
-                insuree_id=insuree.id
-            ).delete()
         insuree_answer = InsureeAnswer.objects.create(**data)
         insuree_answer.save()
     return insuree_answer
