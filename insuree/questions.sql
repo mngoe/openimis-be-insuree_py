@@ -1,15 +1,15 @@
 -- use IMIS
  insert into tblQuestions (code, Question, AltLanguage, QuestionType) VALUES (
-'earn_amount', 'Combien gagnez-vous en moyenne? (montant / mois en CFA)', 'How much do you earn on average? (amount per month in CFA)', 'Dropdown'
+'earn_amount', 'How much do you earn on average? (amount per month in CFA)', 'Combien gagnez-vous en moyenne? (montant / mois en CFA)', 'Dropdown'
  ),
- ('health_status', 'Souffrant de toute maladie chronique', 'Suffering from any chronic', 'Checkbox'),
- ('nutrition_status', 'Nombre de repas par jour', 'Nutrition status', 'Dropdown'),
- ('nb_person_living', 'Nombre de personnes vivant a la maison', 'Nomber of persons living in the house', 'Text'),
- ('nb_rooms', 'Nombre de chambres', 'Nomber of rooms', 'Text'),
- ('f_support', 'Quel type de soutien recevez-vous de la part d''une organisation?', 'Which type of food support are you receiveing from any organization?', 'Dropdown'),
- ('m_support', 'Quel type de soutien matériel recevez-vous de la part d''une organisation?', 'Which type of material support are you receiveing from any organization?', 'Dropdown'),
- ('h_support', 'Quel type de soins de santé maternelle et autre soutient sanitaire recevez-vous de la part d''une organisation quelconque?', 'Which type of maternal health care and other health support are you receiving from any origanization?', 'Dropdown'),
- ('displacement_cond', 'Conditions de déplacement', 'Displacement conditions', 'Dropdown')
+ ('health_status', 'Suffering from any chronic ', 'Souffrant de toute maladie chronique', 'Checkbox'),
+ ('nutrition_status', 'Nutrition status', 'Nombre de repas par jour ', 'Dropdown'),
+ ('nb_person_living', 'Nomber of persons living in the house', 'Nombre de personnes vivant a la maison', 'Text'),
+ ('nb_rooms', 'Nomber of rooms', 'Nombre de chambres', 'Text'),
+ ('f_support', 'Which type of food support are you receiveing from any organization?', 'Quel type de soutien recevez-vous de la part d''une organisation?', 'Dropdown'),
+ ('m_support', 'Which type of material support are you receiveing from any organization?', 'Quel type de soutien matériel recevez-vous de la part d''une organisation ?', 'Dropdown'),
+ ('h_support', 'Which type of maternal health care and other health support are you receiving from any origanization?', 'Quel type de soins de santé maternelle et autre soutient sanitaire recevez-vous de la part d''une organisation quelconque ?', 'Dropdown'),
+ ('displacement_cond', 'Displacement conditions', 'Conditions de déplacement', 'Dropdown')
 
 insert into tblOptions (code, Options, OptionMark, AltLanguage, SortOrder, Question) VALUES
  ('0_15000', '0-15 000', 4, '0-15 000', 1, 1),
