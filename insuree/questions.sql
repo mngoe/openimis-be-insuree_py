@@ -2,7 +2,7 @@
  insert into tblQuestions (code, Question, AltLanguage, QuestionType) VALUES (
 'earn_amount', 'How much do you earn on average? (amount per month in CFA)', 'Combien gagnez-vous en moyenne? (montant / mois en CFA)', 'Dropdown'
  ),
- ('health_status', 'Suffering from any chronic ', 'Souffrant de toute maladie chronique', 'Checkbox'),
+ ('health_status', 'Suffering from any chronic ', 'Souffre d''une maladie chronique', 'Checkbox'),
  ('nutrition_status', 'Nutrition status', 'Nombre de repas par jour ', 'Dropdown'),
  ('nb_person_living', 'Nomber of persons living in the house', 'Nombre de personnes vivant a la maison', 'Text'),
  ('nb_rooms', 'Nomber of rooms', 'Nombre de chambres', 'Text'),
