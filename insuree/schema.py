@@ -151,7 +151,7 @@ class Query(graphene.ObjectType):
             filters += [(Q(current_village__isnull=False) & Q(**{current_village: parent_location})) |
                         (Q(current_village__isnull=True) & Q(**{family_location: parent_location}))]
         # return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
-        return gql_optimizer.query(Insuree.objects.filter(*filters).select_related('gender', 'family', 'health_facility'), info)
+        return gql_optimizer.query(Insuree.objects.filter(*filters).select_related('gender', 'family','location', 'healthfacility'), info)
 
     def resolve_family_members(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insurees_perms):
@@ -219,7 +219,7 @@ class Query(graphene.ObjectType):
 
         # Duplicates cannot be removed with distinct, as TEXT field is not comparable
         # ids = Family.objects.filter(*filters).values_list('id')
-        families = Family.objects.filter(*filters).select_related('family_type', 'location', 'confirmation_type')
+        families = Family.objects.filter(*filters).select_related('familytype','confirmationtype', 'location', 'insuree')
         ids = families.values_list('id', flat=True)
         dinstinct_queryset = Family.objects.filter(id__in=ids)
         return gql_optimizer.query(dinstinct_queryset.all(), info)
