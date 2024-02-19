@@ -1711,11 +1711,8 @@ def insuree_family_overview_query(user, date_from=None, date_to=None, **kwargs):
         filters &= Q(validity_from__lte=date_to + datetimedelta(days=1))
 
     if settings.ROW_SECURITY:
-        from location.models import UserDistrict
-        dist = UserDistrict.get_user_districts(user._u)
-        queryset = Insuree.objects.filter(
-            health_facility__location__id__in=[l.location_id for l in dist]
-        )
+        from location.models import LocationManager
+        queryset = LocationManager().build_user_location_filter_query(user._u, queryset = queryset, loc_types = ['V'] ) 
     else:
         queryset = Insuree.objects
 
