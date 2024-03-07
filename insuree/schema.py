@@ -12,6 +12,7 @@ from django.utils.translation import gettext as _
 from location.apps import LocationConfig
 from core.schema import OrderedDjangoFilterConnectionField, OfficerGQLType
 from policy.models import Policy
+from location.models import LocationManager
 
 # We do need all queries and mutations in the namespace here.
 from .gql_queries import *  # lgtm [py/polluting-import]
@@ -150,6 +151,10 @@ class Query(graphene.ObjectType):
             family_location = "family__location__" + f
             filters += [(Q(current_village__isnull=False) & Q(**{current_village: parent_location})) |
                         (Q(current_village__isnull=True) & Q(**{family_location: parent_location}))]
+        if not info.context.user._u.is_imis_admin and (kwargs.get('ignore_location') == False or kwargs.get('ignore_location') is None):
+            # Limit the list by the logged in user location mapping
+            filters += [Q(LocationManager().build_user_location_filter_query(info.context.user._u, prefix='current_village__parent__parent', loc_types=['D']) |
+                        LocationManager().build_user_location_filter_query(info.context.user._u, prefix='family__location__parent__parent', loc_types=['D']))]
         # return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
         return gql_optimizer.query(Insuree.objects.select_related('family', 'gender', 'health_facility', 'current_village').filter(*filters).all(), info)
 
@@ -194,7 +199,8 @@ class Query(graphene.ObjectType):
 
         officer = kwargs.get('officer', None)
         if officer:
-            officer_policies_families = Policy.objects.filter(officer__uuid=officer).values_list('family', flat=True)
+            officer_policies_families = Policy.objects.filter(
+                officer__uuid=(officer)).values_list('family', flat=True)
             filters.append(Q(id__in=officer_policies_families))
 
         null_as_false_poverty = kwargs.get('null_as_false_poverty')
