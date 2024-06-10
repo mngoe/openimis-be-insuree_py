@@ -11,7 +11,8 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeStatus
+from location import models as location_models
 
 logger = logging.getLogger(__name__)
 
@@ -549,5 +550,103 @@ class ChangeInsureeFamilyMutation(OpenIMISMutation):
                 "insuree.mutation.failed_to_change_insuree_family")
             return [{
                 'message': _("insuree.mutation.failed_to_change_insuree_family"),
+                'detail': str(exc)}
+            ]
+
+
+
+def create_family_for_insurees_without_family(user, data):
+    insurees_without_family = Insuree.objects.filter(family__isnull=True, status=InsureeStatus.ACTIVE, validity_to__isnull = True)
+    data['audit_user_id'] = user.id_for_audit
+    from core.utils import TimeUtils
+    for insuree in insurees_without_family:
+        data['validity_from'] = TimeUtils.now()
+        client_mutation_id = data.get("client_mutation_id")
+       
+        head_insuree_data = {
+            'id': insuree.id,
+            'uuid': insuree.uuid,
+            'chf_id': insuree.chf_id,
+            'last_name': insuree.last_name,
+            'other_names': insuree.other_names,
+            'gender_id': insuree.gender_id,
+            'dob': insuree.dob,
+            'head': insuree.head,
+            'marital': insuree.marital,
+            'passport': insuree.passport,
+            'phone': insuree.phone,
+            'email': insuree.email,
+            'current_address': insuree.current_address,
+            'geolocation': insuree.geolocation,
+            'current_village_id': insuree.current_village_id,
+            'photo_id': insuree.photo_id,
+            'photo_date': insuree.photo_date,
+            'card_issued': insuree.card_issued,
+            'relationship_id': insuree.relationship_id,
+            'profession_id': insuree.profession_id,
+            'education_id': insuree.education_id,
+            'type_of_id_id': insuree.type_of_id_id,
+            'health_facility_id': insuree.health_facility_id,
+            'offline': insuree.offline,
+            'status': insuree.status,
+            'status_date': insuree.status_date,
+            'status_reason_id': insuree.status_reason_id,
+            'audit_user_id': insuree.audit_user_id,
+            'poligamous': insuree.poligamous,
+            'coordinates': insuree.coordinates,
+            'preferred_payment_method': insuree.preferred_payment_method,
+            'income_level_id': insuree.income_level_id,
+            'professional_situation': insuree.professional_situation,
+            'bank_coordinates': insuree.bank_coordinates
+        }
+
+        data['head_insuree'] = head_insuree_data
+       
+       # Une famille doit avoir un location pour pouvoir etre loader par le frontent
+        if (head_insuree_data["current_village_id"]):
+            # data["location"] = head_insuree_data["current_village_id"]
+            current_village_id = head_insuree_data["current_village_id"]
+            current_village = location_models.Location.objects.get(id=current_village_id)
+            data["location"] = current_village
+        else:
+            data["location"] = location_models.Location.objects.get(id=1)
+
+        family = update_or_create_family(data, user)
+        FamilyMutation.object_mutated(
+            user, client_mutation_id=client_mutation_id, family=family)
+        
+        insuree.family = family
+        insuree.save()
+        InsureeMutation.object_mutated(
+                user, client_mutation_id=client_mutation_id, insuree=insuree)
+
+        logger.exception(f"Famille créée pour l'assuré {insuree.chf_id}")
+
+    return None  
+
+class CreateInsureesFamiliesMutation(OpenIMISMutation):
+    """
+    Create families for all valid insured persons who do not yet have one
+    """
+    _mutation_module = "insuree"
+    _mutation_class = "CreateInsureesFamiliesMutation"
+
+    class Input(CreateFamilyInputType):
+        pass
+
+    @classmethod
+    def async_mutate(cls, user, **data):
+        try:
+            if type(user) is AnonymousUser or not user.id:
+                raise ValidationError(
+                    _("mutation.authentication_required"))
+            if not user.has_perms(InsureeConfig.gql_mutation_create_families_perms):
+                raise PermissionDenied(_("unauthorized"))
+            create_family_for_insurees_without_family(user, data)
+            return None
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_create_families")
+            return [{
+                'message': _("insuree.mutation.failed_to_create_families"),
                 'detail': str(exc)}
             ]
