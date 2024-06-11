@@ -1,18 +1,21 @@
 import logging
+from pickle import TRUE
 import uuid
 import pathlib
 import base64
 import graphene
-from insuree.apps import InsureeConfig
-from insuree.services import validate_insuree_number, InsureeService, FamilyService, InsureePolicyService
 
+from insuree.services import validate_insuree_number, InsureeService, FamilyService
+from .apps import InsureeConfig
 from core.schema import OpenIMISMutation
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation, InsureeStatus
+from .models import Family, Insuree, FamilyMutation, InsureeMutation
+
 from location import models as location_models
+from policy.models import Policy
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +36,13 @@ class InsureeBase:
     chf_id = graphene.String(max_length=12, required=False)
     last_name = graphene.String(max_length=100, required=True)
     other_names = graphene.String(max_length=100, required=True)
-    gender_id = graphene.String(max_length=1, required=True)
+    gender_id = graphene.String(max_length=1, required=True, description="Was mandatory in Legacy but not in modular")
     dob = graphene.Date(required=True)
+    
+    dod = graphene.Date(required=False)
+    dead = graphene.Boolean(required=False)
+    deathReason = graphene.String(max_length=500, required=False)
+
     head = graphene.Boolean(required=False)
     marital = graphene.String(max_length=1, required=False)
     passport = graphene.String(max_length=25, required=False)
@@ -55,15 +63,6 @@ class InsureeBase:
     health_facility_id = graphene.Int(required=False)
     offline = graphene.Boolean(required=False)
     json_ext = graphene.types.json.JSONString(required=False)
-    status = graphene.String(required=False)
-    status_reason = graphene.String(required=False)
-    status_date = graphene.Date(required=False)
-    poligamous = graphene.Boolean(required=False)
-    coordinates = graphene.String(max_length=255, required=False)
-    preferred_payment_method = graphene.String(max_length=50, required=False)
-    income_level_id = graphene.Int(required=False)
-    professional_situation = graphene.String(max_length=255, required=False)
-    bank_coordinates = graphene.String(max_length=255, required=False)
 
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
@@ -90,15 +89,9 @@ class FamilyBase:
     confirmation_no = graphene.String(max_length=12, required=False)
     confirmation_type_id = graphene.String(max_length=3, required=False)
     json_ext = graphene.types.json.JSONString(required=False)
-    family_level = graphene.String(max_length=1, required=False)
-    parent_id = graphene.Int(required=False)
-    poligamous = graphene.Boolean(required=False)
-    coordinates = graphene.String(max_length=255, required=False)
-    preferred_payment_method = graphene.String(max_length=50, required=False)
-    income_level_id = graphene.Int(required=False)
-    professional_situation = graphene.String(max_length=255, required=False)
-    bank_coordinates = graphene.String(max_length=255, required=False)
+
     contribution = graphene.types.json.JSONString(required=False)
+
     head_insuree = graphene.Field(FamilyHeadInsureeInputType, required=False)
 
 
@@ -113,6 +106,23 @@ class CreateFamilyInputType(FamilyInputType):
 class UpdateFamilyInputType(FamilyInputType):
     pass
 
+
+def create_file(date, insuree_id, photo_bin):
+    date_iso = date.isoformat()
+    root = InsureeConfig.insuree_photos_root_path
+    file_dir = '%s/%s/%s/%s' % (
+        date_iso[0:4],
+        date_iso[5:7],
+        date_iso[8:10],
+        insuree_id
+    )
+    file_name = uuid.uuid4()
+    file_path = '%s/%s' % (file_dir, file_name)
+    pathlib.Path('%s/%s' % (root, file_dir)).mkdir(parents=True, exist_ok=True)
+    f = open('%s/%s' % (root, file_path), "xb")
+    f.write(base64.b64decode(photo_bin))
+    f.close()
+    return file_dir, file_name
 
 
 def update_or_create_insuree(data, user):
@@ -149,9 +159,12 @@ class CreateFamilyMutation(OpenIMISMutation):
             from core.utils import TimeUtils
             data['validity_from'] = TimeUtils.now()
             client_mutation_id = data.get("client_mutation_id")
+            # Validate insuree number right away
+            errors = validate_insuree_number(data.get("head_insuree", {}).get("chf_id", None), True)
+            if errors:
+                return errors
             family = update_or_create_family(data, user)
-            FamilyMutation.object_mutated(
-                user, client_mutation_id=client_mutation_id, family=family)
+            FamilyMutation.object_mutated(user, client_mutation_id=client_mutation_id, family=family)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_family")
@@ -182,8 +195,7 @@ class UpdateFamilyMutation(OpenIMISMutation):
             data['audit_user_id'] = user.id_for_audit
             client_mutation_id = data.get("client_mutation_id")
             family = update_or_create_family(data, user)
-            FamilyMutation.object_mutated(
-                user, client_mutation_id=client_mutation_id, family=family)
+            FamilyMutation.object_mutated(user, client_mutation_id=client_mutation_id, family=family)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_update_family")
@@ -212,7 +224,7 @@ class DeleteFamiliesMutation(OpenIMISMutation):
         for family_uuid in data["uuids"]:
             family = Family.objects \
                 .prefetch_related('members') \
-                .filter(uuid=(family_uuid)) \
+                .filter(uuid=family_uuid) \
                 .first()
             if family is None:
                 errors.append({
@@ -220,8 +232,7 @@ class DeleteFamiliesMutation(OpenIMISMutation):
                     'list': [{'message': _("insuree.mutation.failed_to_delete_family") % {'uuid': family_uuid}}]
                 })
                 continue
-            errors += FamilyService(user).set_deleted(family,
-                                                      data["delete_members"])
+            errors += FamilyService(user).set_deleted(family, data["delete_members"])
         if len(errors) == 1:
             errors = errors[0]['list']
         return errors
@@ -249,9 +260,12 @@ class CreateInsureeMutation(OpenIMISMutation):
             from core.utils import TimeUtils
             data['validity_from'] = TimeUtils.now()
             client_mutation_id = data.get("client_mutation_id")
+            # Validate insuree number right away
+            errors = validate_insuree_number(data.get("chf_id", None), True)
+            if errors:
+                return errors
             insuree = update_or_create_insuree(data, user)
-            InsureeMutation.object_mutated(
-                user, client_mutation_id=client_mutation_id, insuree=insuree)
+            InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_insuree")
@@ -279,14 +293,17 @@ class UpdateInsureeMutation(OpenIMISMutation):
                     _("mutation.authentication_required"))
             if not user.has_perms(InsureeConfig.gql_mutation_create_insurees_perms):
                 raise PermissionDenied(_("unauthorized"))
-            if 'uuid' not in data:
-                raise ValidationError(
-                    "There is no uuid in updateMutation input!")
             data['audit_user_id'] = user.id_for_audit
             client_mutation_id = data.get("client_mutation_id")
             insuree = update_or_create_insuree(data, user)
-            InsureeMutation.object_mutated(
-                user, client_mutation_id=client_mutation_id, insuree=insuree)
+            ## If an insuree is considered Dead, we suspend all family policy linked to this insuree
+            if insuree.dead == True : 
+                listPolicy = Policy.objects.filter(family=insuree.family).all()
+                for policy in listPolicy :
+                    policy.status=4
+                    policy.save()
+
+            InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_update_insuree")
@@ -304,8 +321,7 @@ class DeleteInsureesMutation(OpenIMISMutation):
     _mutation_class = "DeleteInsureesMutation"
 
     class Input(OpenIMISMutation.Input):
-        # family uuid, to 'lock' family while mutation is processed
-        uuid = graphene.String(required=False)
+        uuid = graphene.String(required=False)  # family uuid, to 'lock' family while mutation is processed
         uuids = graphene.List(graphene.String)
 
     @classmethod
@@ -316,7 +332,7 @@ class DeleteInsureesMutation(OpenIMISMutation):
         for insuree_uuid in data["uuids"]:
             insuree = Insuree.objects \
                 .prefetch_related('family') \
-                .filter(uuid__iexact=insuree_uuid) \
+                .filter(uuid=insuree_uuid) \
                 .first()
             if insuree is None:
                 errors.append({
@@ -333,99 +349,6 @@ class DeleteInsureesMutation(OpenIMISMutation):
                 })
                 continue
             errors += InsureeService(user).set_deleted(insuree)
-        if len(errors) == 1:
-            errors = errors[0]['list']
-        return errors
-
-class MoveFamilyToParentMutation(OpenIMISMutation):
-    """
-    Moves a family to a parent one
-    """
-    _mutation_module = "insuree"
-    _mutation_class = "MoveFamilyToParentMutation"
-
-    class Input(OpenIMISMutation.Input):
-        family_uuid = graphene.String(required=True)
-        family_uuids = graphene.List(graphene.String, required=True)
-        cancel_policies = graphene.Boolean(default_value=False)
-
-    @classmethod
-    def async_mutate(cls, user, **data):
-        errors = []
-        for child_family_uuid in data["family_uuids"]:
-            if child_family_uuid == data["family_uuid"]:
-                errors.append({
-                    'title': child_family_uuid,
-                    'list': [{'message': _(
-                        "Impossible d'assigner la famille %(id)s à elle-même") % {'id': child_family_uuid}}]
-                })
-                continue
-            family = Family.objects \
-                .prefetch_related('parent') \
-                .filter(uuid=(child_family_uuid)) \
-                .first()
-            if family is None:
-                errors += {
-                    'title': family,
-                    'list': [{'message': (
-                        "La famille %(id)s n'existe pas") % {'id': child_family_uuid}}]
-                }
-                continue
-            insuree_service = InsureeService(user)
-            if data['cancel_policies']:
-                insurees = Insuree.objects \
-                .prefetch_related('family') \
-                .filter(family_id=family.id)
-                if insurees:
-                    for insuree in insurees:
-                        errors += insuree_service.cancel_policies(insuree)
-            parent_family = Family.objects \
-                .prefetch_related('parent') \
-                .filter(uuid=(data["family_uuid"])) \
-                .first()
-            setattr(family, 'parent', parent_family)
-            family.save()
-        if len(errors) == 1:
-            errors = errors[0]['list']
-        return errors
-
-
-class DeleteFamiliesFromParentMutation(OpenIMISMutation):
-    """
-    Deletes the parent on a family
-    """
-    _mutation_module = "insuree"
-    _mutation_class = "DeleteFamiliesFromParentMutation"
-
-    class Input(OpenIMISMutation.Input):
-        family_uuids = graphene.List(graphene.String, required=True)
-        cancel_policies = graphene.Boolean(default_value=False)
-
-    @classmethod
-    def async_mutate(cls, user, **data):
-        errors = []
-        for child_family_uuid in data["family_uuids"]:
-            family = Family.objects \
-                .prefetch_related('parent') \
-                .filter(uuid=(child_family_uuid)) \
-                .first()
-            if family is None:
-                errors += {
-                    'title': family,
-                    'list': [{'message': (
-                        "La famille %(id)s n'existe pas") % {'id': child_family_uuid}}]
-                }
-                continue
-            insuree_service = InsureeService(user)
-            if data['cancel_policies']:
-                insurees = Insuree.objects \
-                .prefetch_related('family') \
-                .filter(family_id=family.id)
-                if insurees:
-                    for insuree in insurees:
-                        errors += insuree_service.cancel_policies(insuree)
-            setattr(family, 'parent', None)
-            family.save()
         if len(errors) == 1:
             errors = errors[0]['list']
         return errors
@@ -451,7 +374,7 @@ class RemoveInsureesMutation(OpenIMISMutation):
         for insuree_uuid in data["uuids"]:
             insuree = Insuree.objects \
                 .prefetch_related('family') \
-                .filter(uuid=(insuree_uuid)) \
+                .filter(uuid=insuree_uuid) \
                 .first()
             if insuree is None:
                 errors += {
@@ -492,8 +415,8 @@ class SetFamilyHeadMutation(OpenIMISMutation):
         if not user.has_perms(InsureeConfig.gql_mutation_update_families_perms):
             raise PermissionDenied(_("unauthorized"))
         try:
-            family = Family.objects.get(uuid=(data['uuid']))
-            insuree = Insuree.objects.get(uuid=(data['insuree_uuid']))
+            family = Family.objects.get(uuid=data['uuid'])
+            insuree = Insuree.objects.get(uuid=data['insuree_uuid'])
             family.save_history()
             prev_head = family.head_insuree
             if prev_head:
@@ -532,22 +455,16 @@ class ChangeInsureeFamilyMutation(OpenIMISMutation):
                 not user.has_perms(InsureeConfig.gql_mutation_update_insurees_perms):
             raise PermissionDenied(_("unauthorized"))
         try:
-            family = Family.objects.get(uuid=(data['family_uuid']))
-            insuree = Insuree.objects.get(uuid=(data['insuree_uuid']))
+            family = Family.objects.get(uuid=data['family_uuid'])
+            insuree = Insuree.objects.get(uuid=data['insuree_uuid'])
             insuree.save_history()
             insuree.family = family
             insuree.save()
-
             if data['cancel_policies']:
-                InsureeService(user).cancel_policies(insuree)
-
-            # Assign all the valid policies from the new family
-            InsureePolicyService(user).add_insuree_policy(insuree)
-
+                return InsureeService(user).cancel_policies(insuree)
             return None
         except Exception as exc:
-            logger.exception(
-                "insuree.mutation.failed_to_change_insuree_family")
+            logger.exception("insuree.mutation.failed_to_change_insuree_family")
             return [{
                 'message': _("insuree.mutation.failed_to_change_insuree_family"),
                 'detail': str(exc)}
@@ -556,7 +473,7 @@ class ChangeInsureeFamilyMutation(OpenIMISMutation):
 
 
 def create_family_for_insurees_without_family(user, data):
-    insurees_without_family = Insuree.objects.filter(family__isnull=True, status=InsureeStatus.ACTIVE, validity_to__isnull = True)
+    insurees_without_family = Insuree.objects.filter(family__isnull=True, validity_to__isnull = True)
     data['audit_user_id'] = user.id_for_audit
     from core.utils import TimeUtils
     for insuree in insurees_without_family:
@@ -588,17 +505,9 @@ def create_family_for_insurees_without_family(user, data):
             'type_of_id_id': insuree.type_of_id_id,
             'health_facility_id': insuree.health_facility_id,
             'offline': insuree.offline,
-            'status': insuree.status,
-            'status_date': insuree.status_date,
-            'status_reason_id': insuree.status_reason_id,
-            'audit_user_id': insuree.audit_user_id,
-            'poligamous': insuree.poligamous,
-            'coordinates': insuree.coordinates,
-            'preferred_payment_method': insuree.preferred_payment_method,
-            'income_level_id': insuree.income_level_id,
-            'professional_situation': insuree.professional_situation,
-            'bank_coordinates': insuree.bank_coordinates
+            'audit_user_id': insuree.audit_user_id
         }
+
 
         data['head_insuree'] = head_insuree_data
        
