@@ -3,7 +3,7 @@ from graphene_django import DjangoObjectType
 
 from .apps import InsureeConfig
 from .models import Insuree, InsureePhoto, Education, Profession, Gender, IdentificationType, \
-    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation
+    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation, TemporaryInsureePolicy, TemporaryInsuree, TemporaryInsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
@@ -216,3 +216,87 @@ class FamilyMutationGQLType(DjangoObjectType):
 class InsureeMutationGQLType(DjangoObjectType):
     class Meta:
         model = InsureeMutation
+
+
+
+class TemporaryInsureeGQLType(DjangoObjectType):
+    age = graphene.Int(source='age')
+    client_mutation_id = graphene.String()
+    photo = PhotoGQLType()
+
+    def resolve_current_village(self, info):
+        if "location_loader" in info.context.dataloaders and self.current_village_id:
+            return info.context.dataloaders["location_loader"].load(
+                self.current_village_id
+            )
+        return self.current_village
+
+    def resolve_family(self, info):
+        if "family_loader" in info.context.dataloaders and self.family_id:
+            return info.context.dataloaders["family_loader"].load(self.family_id)
+        return self.family
+
+    def resolve_health_facility(self, info):
+        if "health_facililty" in info.context.dataloaders and self.health_facility_id:
+            return info.context.dataloaders["health_facility"].load(
+                self.health_facility_id
+            )
+        return self.health_facility
+
+    def resolve_photo(self, info):
+        return self.photo
+
+    class Meta:
+        model = TemporaryInsuree
+        filter_fields = {
+            "uuid": ["exact"],
+            "chf_id": ["exact", "istartswith", "icontains", "iexact"],
+            "last_name": ["exact", "istartswith", "icontains", "iexact"],
+            "other_names": ["exact", "istartswith", "icontains", "iexact"],
+            "email": ["exact", "istartswith", "icontains", "iexact", "isnull"],
+            "phone": ["exact", "istartswith", "icontains", "iexact", "isnull"],
+            "dob": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+            "head": ["exact"],
+            "passport": ["exact", "istartswith", "icontains", "iexact", "isnull"],
+            "gender__code": ["exact", "isnull"],
+            "marital": ["exact", "isnull"],
+            "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+            "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+            **prefix_filterset("photo__", PhotoGQLType._meta.filter_fields),
+            "photo": ["isnull"],
+            **prefix_filterset("gender__", GenderGQLType._meta.filter_fields)
+        }
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
+
+    def resolve_client_mutation_id(self, info):
+        insuree_mutation = self.mutations.select_related(
+            'mutation').filter(mutation__status=0).first()
+        return insuree_mutation.mutation.client_mutation_id if insuree_mutation else None
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return TemporaryInsuree.get_queryset(queryset, info)
+
+
+class TemporaryInsureeMutationGQLType(DjangoObjectType):
+    class Meta:
+        model = TemporaryInsureeMutation
+
+class TemporaryInsureePolicyGQLType(DjangoObjectType):
+    class Meta:
+        model = TemporaryInsureePolicy
+        filter_fields = {
+            "enrollment_date": ["exact", "lt", "lte", "gt", "gte"],
+            "start_date": ["exact", "lt", "lte", "gt", "gte"],
+            "effective_date": ["exact", "lt", "lte", "gt", "gte"],
+            "expiry_date": ["exact", "lt", "lte", "gt", "gte"],
+            **prefix_filterset("insuree__", InsureeGQLType._meta.filter_fields),
+            **prefix_filterset("policy__", PolicyGQLType._meta.filter_fields),
+        }
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return TemporaryInsureePolicy.get_queryset(queryset, info)

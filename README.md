@@ -15,6 +15,7 @@ It is dedicated to be deployed as a module of [openimis-be_py](https://github.co
 * tblFamilyTypes > FamilyType
 * tblFamilies > Family
 * tblInsuree > Insuree
+* tblTemporaryInsuree > TemporaryInsuree
 * tblInsureePolicy > InsureePolicy
 * tblConfirmationTypes > ConfirmationType
 * tblProfessions > Profession
@@ -22,6 +23,7 @@ It is dedicated to be deployed as a module of [openimis-be_py](https://github.co
 * tblIdentificationTypes > IdentificationType
 * tblRelations > Relation
 * insuree_InsureeMutation > InsureeMutation
+* insuree_TemporaryInsureeMutation > TemporaryInsureeMutation
 * insuree_FamilyMutation > FamilyMutation
 * tblPolicyRenewalDetails > PolicyRenewalDetail
 

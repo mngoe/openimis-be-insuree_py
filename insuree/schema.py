@@ -7,7 +7,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 import graphene_django_optimizer as gql_optimizer
 
 from .apps import InsureeConfig
-from .models import FamilyMutation, InsureeMutation
+from .models import FamilyMutation, InsureeMutation, TemporaryInsureeMutation
 from django.utils.translation import gettext as _
 from location.apps import LocationConfig
 from core.schema import OrderedDjangoFilterConnectionField, OfficerGQLType
@@ -61,6 +61,14 @@ class Query(graphene.ObjectType):
         client_mutation_id=graphene.String(),
         orderBy=graphene.List(of_type=graphene.String),
     )
+    temporaryInsurees = OrderedDjangoFilterConnectionField(
+        TemporaryInsureeGQLType,
+        show_history=graphene.Boolean(),
+        parent_location=graphene.String(),
+        parent_location_level=graphene.Int(),
+        client_mutation_id=graphene.String(),
+        orderBy=graphene.List(of_type=graphene.String),
+    )
     identification_types = graphene.List(IdentificationTypeGQLType)
     educations = graphene.List(EducationGQLType)
     professions = graphene.List(ProfessionGQLType)
@@ -86,6 +94,13 @@ class Query(graphene.ObjectType):
     insuree_officers = DjangoFilterConnectionField(OfficerGQLType)
     insuree_policy = OrderedDjangoFilterConnectionField(
         InsureePolicyGQLType,
+        parent_location=graphene.String(),
+        parent_location_level=graphene.Int(),
+        orderBy=graphene.List(of_type=graphene.String),
+        additional_filter=graphene.JSONString(),
+    )
+    temporary_insuree_policy = OrderedDjangoFilterConnectionField(
+        TemporaryInsureePolicyGQLType,
         parent_location=graphene.String(),
         parent_location_level=graphene.Int(),
         orderBy=graphene.List(of_type=graphene.String),
@@ -273,6 +288,10 @@ class Mutation(graphene.ObjectType):
     remove_insurees = RemoveInsureesMutation.Field()
     set_family_head = SetFamilyHeadMutation.Field()
     change_insuree_family = ChangeInsureeFamilyMutation.Field()
+    create_temporary_insuree = CreateTemporaryInsureeMutation.Field()
+    update_temporary_insuree = UpdateTemporaryInsureeMutation.Field()
+    delete_temporary_insurees = DeleteTemporaryInsureesMutation.Field()
+    remove_temporary_insurees = RemoveTemporaryInsureesMutation.Field()
 
 
 def on_family_mutation(kwargs, k='uuid'):
@@ -332,6 +351,23 @@ def on_family_and_insuree_mutation(kwargs):
     insuree = on_insuree_mutation(kwargs, 'insuree_uuid')
     return family + insuree
 
+def on_temporary_insurees_mutation(kwargs):
+    uuids = kwargs['data'].get('uuids', [])
+    if not uuids:
+        uuid = kwargs['data'].get('uuid', None)
+        uuids = [uuid] if uuid else []
+    if not uuids:
+        return []
+    impacted_insurees = TemporaryInsuree.objects.filter(uuid__in=uuids).all()
+    for insuree in impacted_insurees:
+        TemporaryInsureeMutation.objects.create(
+            insuree=insuree, mutation_id=kwargs['mutation_log_id'])
+    return []
+
+def on_family_and_temporary_insurees_mutation(kwargs):
+    family = on_family_mutation(kwargs)
+    insurees = on_temporary_insurees_mutation(kwargs)
+    return family + insurees
 
 def on_mutation(sender, **kwargs):
     return {
@@ -344,6 +380,10 @@ def on_mutation(sender, **kwargs):
         RemoveInsureesMutation._mutation_class: on_family_and_insurees_mutation,
         SetFamilyHeadMutation._mutation_class: on_family_mutation,
         ChangeInsureeFamilyMutation._mutation_class: on_family_and_insuree_mutation,
+        CreateTemporaryInsureeMutation._mutation_class: on_temporary_insurees_mutation,
+        UpdateTemporaryInsureeMutation._mutation_class: on_temporary_insurees_mutation,
+        DeleteTemporaryInsureesMutation._mutation_class: on_family_and_insurees_mutation,
+        RemoveTemporaryInsureesMutation._mutation_class: on_family_and_insurees_mutation,
     }.get(sender._mutation_class, lambda x: [])(kwargs)
 
 
