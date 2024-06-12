@@ -379,3 +379,157 @@ class PolicyRenewalDetail(core_models.VersionedModel):
     class Meta:
         managed = False
         db_table = 'tblPolicyRenewalDetails'
+
+
+
+class TemporaryInsuree(core_models.VersionedModel, core_models.ExtendableModel):
+    id = models.AutoField(db_column='TemporaryInsureeID', primary_key=True)
+    uuid = models.CharField(db_column='TemporaryInsureeUUID', max_length=36, default=uuid.uuid4, unique=True)
+
+    family = models.ForeignKey(Family, models.DO_NOTHING, blank=True, null=True,
+                               db_column='FamilyID', related_name="temporaryMembers")
+    chf_id = models.CharField(db_column='CHFID', max_length=12, blank=True, null=True)
+    last_name = models.CharField(db_column='LastName', max_length=100)
+    other_names = models.CharField(db_column='OtherNames', max_length=100)
+    gender = models.ForeignKey(Gender, models.DO_NOTHING, db_column='Gender', blank=True, null=True,
+                               related_name='temporaryInsurees')
+    dob = core.fields.DateField(db_column='DOB')
+    dead = models.BooleanField(db_column='Dead', blank=True, null=True, default=False)
+    dod = core.fields.DateField(db_column='DOD', null=True,)
+    deathReason = models.CharField(db_column='DeathReason', max_length=500, null=True,)
+    def age(self, reference_date=None):
+        if self.dob:
+            today = core.datetime.date.today() if reference_date is None else reference_date
+            before_birthday = (today.month, today.day) < (
+                self.dob.month, self.dob.day)
+            return today.year - self.dob.year - before_birthday
+        else:
+            return None
+
+    def is_adult(self, reference_date=None):
+        if self.dob:
+            return self.age(reference_date) >= core.age_of_majority
+        else:
+            return None
+
+    head = models.BooleanField(db_column='IsHead')
+    marital = models.CharField(db_column='Marital', max_length=1, blank=True, null=True)
+
+    passport = models.CharField(max_length=25, blank=True, null=True)
+    phone = models.CharField(db_column='Phone', max_length=50, blank=True, null=True)
+    email = models.CharField(db_column='Email', max_length=100, blank=True, null=True)
+    current_address = models.CharField(db_column='CurrentAddress', max_length=200, blank=True, null=True)
+    geolocation = models.CharField(db_column='GeoLocation', max_length=250, blank=True, null=True)
+    current_village = models.ForeignKey(
+        location_models.Location, models.DO_NOTHING, db_column='CurrentVillage', blank=True, null=True)
+    photo = models.OneToOneField(InsureePhoto, models.DO_NOTHING,
+                              db_column='PhotoID', blank=True, null=True, related_name='+')
+    photo_date = core.fields.DateField(db_column='PhotoDate', blank=True, null=True)
+    card_issued = models.BooleanField(db_column='CardIssued')
+    relationship = models.ForeignKey(
+        Relation, models.DO_NOTHING, db_column='Relationship', blank=True, null=True,
+        related_name='temporaryInsurees')
+    profession = models.ForeignKey(
+        Profession, models.DO_NOTHING, db_column='Profession', blank=True, null=True,
+        related_name='temporaryInsurees')
+    education = models.ForeignKey(
+        Education, models.DO_NOTHING, db_column='Education', blank=True, null=True,
+        related_name='temporaryInsurees')
+    type_of_id = models.ForeignKey(
+        IdentificationType, models.DO_NOTHING, db_column='TypeOfId', blank=True, null=True)
+    health_facility = models.ForeignKey(
+        location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True,
+        related_name='temporaryInsurees')
+
+    offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
+    audit_user_id = models.IntegerField(db_column='AuditUserID')
+    # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
+
+    def is_head_of_family(self):
+        return self.family and self.family.head_insuree == self
+
+    def __str__(self):
+        return f"{self.chf_id} {self.last_name} {self.other_names}"
+
+    @classmethod
+    def filter_queryset(cls, queryset=None):
+        if queryset is None:
+            queryset = cls.objects.all()
+        return queryset
+
+    @classmethod
+    def get_queryset(cls, queryset, user):
+        queryset = cls.filter_queryset(queryset)
+        # GraphQL calls with an info object while Rest calls with the user itself
+        if isinstance(user, ResolveInfo):
+            user = user.context.user
+        if settings.ROW_SECURITY and user.is_anonymous:
+            return queryset.filter(id=-1)
+        if InsureeConfig.excluded_insuree_chfids:
+            queryset = queryset.exclude(
+                chf_id__in=InsureeConfig.excluded_insuree_chfids
+            )
+        # The insuree "health facility" is the "First Point of Service"
+        # (aka the 'preferred/reference' HF for an insuree)
+        # ... so not to be used as 'strict filtering'
+        if settings.ROW_SECURITY and not user.is_imis_admin:
+            return queryset.filter(
+                Q(LocationManager().build_user_location_filter_query(user._u, prefix='current_village__parent__parent', loc_types=['D']) |
+                LocationManager().build_user_location_filter_query(user._u, prefix='family__location__parent__parent', loc_types=['D']))
+            )
+        return queryset
+    class Meta:
+        managed = True
+        db_table = 'tblTemporaryInsuree'
+        indexes = [
+            models.Index(fields=['legacy_id', 'validity_from', 'validity_to', 'chf_id'])
+        ]
+
+
+class TemporaryInsureeMutation(core_models.UUIDModel, core_models.ObjectMutation):
+    insuree = models.ForeignKey(TemporaryInsuree, models.DO_NOTHING, related_name='mutations')
+    mutation = models.ForeignKey(core_models.MutationLog, models.DO_NOTHING, related_name='temporaryInsurees')
+
+    class Meta:
+        managed = True
+        db_table = "insuree_TemporaryInsureeMutation"
+
+class TemporaryInsureePolicy(core_models.VersionedModel):
+    id = models.AutoField(db_column='TemporaryInsureePolicyID', primary_key=True)
+
+    insuree = models.ForeignKey(TemporaryInsuree, models.DO_NOTHING, db_column='TemporaryInsureeID', related_name="temporary_insuree_policies")
+    policy = models.ForeignKey("policy.Policy", models.DO_NOTHING, db_column='PolicyId',
+                               related_name="temporary_insuree_policies")
+
+    enrollment_date = core.fields.DateField(db_column='EnrollmentDate', blank=True, null=True)
+    start_date = core.fields.DateField(db_column='StartDate', blank=True, null=True)
+    effective_date = core.fields.DateField(db_column='EffectiveDate', blank=True, null=True)
+    expiry_date = core.fields.DateField(db_column='ExpiryDate', blank=True, null=True)
+
+    offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
+    audit_user_id = models.IntegerField(db_column='AuditUserID')
+
+    @classmethod
+    def filter_queryset(cls, queryset=None):
+        if queryset is None:
+            queryset = cls.objects.all()
+        return queryset
+
+    @classmethod
+    def get_queryset(cls, queryset, user):
+        queryset = cls.filter_queryset(queryset)
+        # GraphQL calls with an info object while Rest calls with the user itself
+        if isinstance(user, ResolveInfo):
+            user = user.context.user
+        if settings.ROW_SECURITY and user.is_anonymous:
+            return queryset.filter(id=-1)
+        if settings.ROW_SECURITY and not user.is_imis_admin:
+            return queryset.filter(
+                Q(LocationManager().build_user_location_filter_query(user._u, prefix='insuree__current_village__parent__parent', loc_types=['D']) |
+                    LocationManager().build_user_location_filter_query(user._u, prefix='insuree__family__location__parent__parent', loc_types=['D']))
+            )
+        return queryset
+
+    class Meta:
+        managed = False
+        db_table = 'tblTemporaryInsureePolicy'

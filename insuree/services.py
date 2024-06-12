@@ -11,7 +11,7 @@ from django.utils.translation import gettext as _
 
 from core.signals import register_service_signal
 from insuree.apps import InsureeConfig
-from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy
+from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy, TemporaryInsuree, TemporaryInsureePolicy
 from cs.models import ChequeImportLine
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,43 @@ def validate_insuree_number(insuree_number, is_new_insuree=False):
             return [{"message": "Insuree number validation failed"}]
     return []
 
+
+def validate_temporary_insuree_number(insuree_number, is_new_insuree=False):
+    if is_new_insuree:
+        if Insuree.objects.filter(chf_id=insuree_number).exists() or TemporaryInsuree.objects.filter(chf_id=insuree_number).exists():
+            return [{"message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
+
+    # Nor used here aigain, but in policy module
+    # if ChequeImportLine.objects.filter(chequeImportLineCode=insuree_number,chequeImportLineStatus='new').exists()==False:
+    #     return [{"message": "Cheque is not available, %s exists in system" % insuree_number}]
+
+    if InsureeConfig.get_insuree_number_validator():
+        return InsureeConfig.get_insuree_number_validator()(insuree_number)
+    if InsureeConfig.get_insuree_number_length():
+        if not insuree_number:
+            return [
+                {
+                    "message": "Invalid insuree number (empty), should be %s" %
+                               (InsureeConfig.get_insuree_number_length(),)
+                }
+            ]
+        if len(insuree_number) != InsureeConfig.get_insuree_number_length():
+            return [
+                {
+                    "message": "Invalid insuree number length %s, should be %s" %
+                               (len(insuree_number), InsureeConfig.get_insuree_number_length())
+                }
+            ]
+    if InsureeConfig.get_insuree_number_modulo_root():
+        try:
+            base = int(insuree_number[:-1])
+            mod = int(insuree_number[-1])
+            if base % InsureeConfig.get_insuree_number_modulo_root() != mod:
+                return [{"message": "Invalid checksum"}]
+        except Exception as exc:
+            logger.exception("Failed insuree number validation", exc)
+            return [{"message": "Insuree number validation failed"}]
+    return []
 
 def reset_insuree_before_update(insuree):
     insuree.family = None
@@ -336,3 +373,101 @@ class FamilyService:
             insuree_service.set_deleted(member)
         else:
             insuree_service.remove(member)
+
+
+class TemporaryInsureeService:
+    def __init__(self, user):
+        self.user = user
+
+    @register_service_signal('temporary_insuree_service.create_or_update')
+    def create_or_update(self, data):
+        photo = data.pop('photo', None)
+        from core import datetime
+        now = datetime.datetime.now()
+        data['audit_user_id'] = self.user.id_for_audit
+        data['validity_from'] = now
+        insuree_uuid = data.pop('uuid', None)
+        if insuree_uuid:
+            insuree = TemporaryInsuree.objects.prefetch_related("photo").get(uuid=insuree_uuid)
+            print("Old Mail ", insuree.email)
+            if 'email' in data:
+                new_email = data.get('email')
+                print("new email ", new_email)
+                # if the patient is HIV, you can't set him as NON HIV
+                if insuree.email == 'newhivuser_XM7dw70J0M3N@gmail.com':
+                    if new_email != 'newhivuser_XM7dw70J0M3N@gmail.com':
+                        raise Exception("Sorry you can't pass an insuree from HIV to Non HIV")
+                else:
+                    # if the patient is NON HIV, you can't set him as HIV
+                    if new_email == 'newhivuser_XM7dw70J0M3N@gmail.com':
+                        raise Exception("Sorry you can't pass an insuree from non HIV to HIV")
+            insuree.save_history()
+            # reset the non required fields
+            # (each update is 'complete', necessary to be able to set 'null')
+            reset_insuree_before_update(insuree)
+            [setattr(insuree, key, data[key]) for key in data]
+        else:
+            errors = validate_temporary_insuree_number(data["chf_id"])
+            if errors:
+                raise Exception("Invalid insuree number")
+            else:
+                insuree = TemporaryInsuree.objects.create(**data)
+                # currentCheque = ChequeImportLine.objects.filter(chequeImportLineCode=data["chf_id"],chequeImportLineStatus='new')
+                # currentCheque = currentCheque[0]
+                # setattr(currentCheque,"chequeImportLineStatus","Used")
+                # currentCheque.save()
+        insuree.save()
+        photo = handle_insuree_photo(self.user, now, insuree, photo)
+        if photo:
+            insuree.photo = photo
+            insuree.photo_date = photo.date
+            insuree.save()
+        return insuree
+
+    def remove(self, insuree):
+        try:
+            insuree.save_history()
+            insuree.family = None
+            insuree.save()
+            return []
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_remove_insuree")
+            return {
+                'title': insuree.chf_id,
+                'list': [{
+                    'message': _("insuree.mutation.failed_to_remove_insuree") % {'chfid': insuree.chfid},
+                    'detail': insuree.uuid}]
+            }
+
+    @register_service_signal('temporary_insuree_service.delete')
+    def set_deleted(self, insuree):
+        try:
+            insuree.delete_history()
+            [ip.delete_history() for ip in insuree.temporary_insuree_policies.filter(validity_to__isnull=True)]
+            return []
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_delete_insuree")
+            return {
+                'title': insuree.chf_id,
+                'list': [{
+                    'message': _("insuree.mutation.failed_to_delete_insuree") % {'chfid': insuree.chf_id},
+                    'detail': insuree.uuid}]
+            }
+
+    def cancel_policies(self, insuree):
+        try:
+            from core import datetime
+            now = datetime.datetime.now()
+            ips = insuree.insuree_policies.filter(Q(expiry_date__isnull=True) | Q(expiry_date__gt=now))
+            for ip in ips:
+                ip.expiry_date = now
+            TemporaryInsureePolicy.objects.bulk_update(ips, ['expiry_date'])
+            return []
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_cancel_insuree_policies")
+            return {
+                'title': insuree.chf_id,
+                'list': [{
+                    'message': _("insuree.mutation.failed_to_cancel_insuree_policies") % {'chfid': insuree.chfid},
+                    'detail': insuree.uuid}]
+            }
