@@ -6,14 +6,10 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('insuree', '0020_auto_20240205_0934'),
+        ('insuree', '0018_auto_20240202_1607'),
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='family',
-            index=models.Index(fields=['legacy_id', 'validity_from', 'validity_to'], name='tblFamilies_LegacyI_79a19e_idx'),
-        ),
         migrations.AddIndex(
             model_name='insuree',
             index=models.Index(fields=['legacy_id', 'validity_from', 'validity_to', 'chf_id'], name='tblInsuree_LegacyI_6f5da6_idx'),
