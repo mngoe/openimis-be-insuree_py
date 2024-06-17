@@ -145,7 +145,7 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
         managed = True
         db_table = 'tblFamilies'
         indexes = [
-            models.Index(fields=['legacy_id', 'validity_from', 'validity_to'])
+            models.Index(fields=['legacy_id', 'validity_from', 'validity_to','FamilyUUID'])
         ]
 
 
