@@ -273,6 +273,7 @@ class Mutation(graphene.ObjectType):
     remove_insurees = RemoveInsureesMutation.Field()
     set_family_head = SetFamilyHeadMutation.Field()
     change_insuree_family = ChangeInsureeFamilyMutation.Field()
+    create_insurees_family = CreateInsureesFamiliesMutation.Field()
 
 
 def on_family_mutation(kwargs, k='uuid'):
