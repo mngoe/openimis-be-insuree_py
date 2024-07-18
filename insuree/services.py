@@ -64,6 +64,7 @@ def custom_insuree_number_validation(insuree_number):
 
 
 def validate_insuree_number(insuree_number, insuree_uuid=None):
+    insuree_number = str(insuree_number)
     query = Insuree.objects.filter(
         chf_id=insuree_number, validity_to__isnull=True)
     insuree = query.first()

@@ -13,9 +13,11 @@ def create_test_insuree(with_family=True, is_head=False, custom_props=None, fami
     family = None
     location = None
     village = None
-    ref = random.randrange(10000000, 99999999)
+    start_number = pow(10, InsureeConfig.get_insuree_number_length()-1)
+    end_number = start_number * 10 - 1
+    ref = random.randrange(start_number, end_number)
     while validate_insuree_number(ref) != []:
-        ref = random.randrange(10000000, 99999999)
+        ref = random.randrange(start_number, end_number)
     if custom_props is not None and 'chf_id' in custom_props:
         ref=custom_props.pop('chf_id')
     insuree = Insuree.objects.filter(chf_id=ref, validity_to__isnull=True).first()
