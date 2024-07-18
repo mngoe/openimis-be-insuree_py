@@ -284,7 +284,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
 
         # Duplicates cannot be removed with distinct, as TEXT field is not comparable
         # ids = Family.objects.filter(*filters).values_list('id')
-        ids = Family.objects.select_related('head_insuree', 'location', 'family_type', 'confirmation_type').filter(*filters).values_list('id')
+        ids = Family.objects.filter(*filters).values_list('id')
         # dinstinct_queryset = Family.objects.filter(id__in=ids)
         dinstinct_queryset = Family.objects.select_related('head_insuree', 'location', 'family_type', 'confirmation_type').filter(id__in=ids)
         return gql_optimizer.query(dinstinct_queryset.all(), info)
