@@ -32,6 +32,19 @@ class Migration(migrations.Migration):
             (id, module, version, config, is_exposed, layer) 
             VALUES 
             ('472ad188-0882-4f31-8b1a-34606ed8e255', 'insuree', 1, '{ "comores_features_enabled": true }', 't', 'be');
+
+            INSERT INTO "tblIncomeLevels" 
+            ("FrenchVersion", "EnglishVersion") VALUES
+            ('Néant', 'Nothing'),
+            ('<30 000', '<30 000'),
+            ('30 000-40 000', '30 000-40 000'),
+            ('40 000-50 000', '40 000-50 000'),
+            ('50 000-60 000', '50 000-60 000'),
+            ('60 000-75 000', '60 000-75 000'),
+            ('75 000-200 000', '75 000-200 000'),
+            ('200 000-300 000', '200 000-300 000'),
+            ('300 000-600 000', '300 000-600 000'),
+            ('>600 000', '>600 000');
             """
         )
     ]
