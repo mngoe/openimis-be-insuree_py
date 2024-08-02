@@ -45,6 +45,14 @@ class Migration(migrations.Migration):
             ('200 000-300 000', '200 000-300 000'),
             ('300 000-600 000', '300 000-600 000'),
             ('>600 000', '>600 000');
+
+            UPDATE "tblFamilies" 
+            SET "FamilyType" ='H' 
+            WHERE "FamilyType" not in ('H', 'P');
+
+            DELETE FROM "tblFamilyTypes" 
+            WHERE "FamilyTypeCode" not in ('H', 'P');
+            
             """
         )
     ]
