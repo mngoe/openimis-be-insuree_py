@@ -11,10 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='insuree',
-            name='row_id',
-        ),
         migrations.AddField(
             model_name='family',
             name='family_level',

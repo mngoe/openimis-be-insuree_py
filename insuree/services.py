@@ -476,7 +476,7 @@ class FamilyService:
                 while formatted_num == 0 or Insuree.objects.filter(chf_id=formatted_num).exists():
                     random_num = random.randint(min_num, max_num)
                     formatted_num = str(random_num).zfill(5)
-                    head_insuree_data["chf_id"] = str(data["confirmation_no"]) + str(formatted_num)
+                    head_insuree_data["chf_id"] = str(head_insuree_data["passport"]) + str(formatted_num)
             head_insuree = InsureeService(
                 self.user).create_or_update(head_insuree_data)
             data["head_insuree_id"] = head_insuree.id
