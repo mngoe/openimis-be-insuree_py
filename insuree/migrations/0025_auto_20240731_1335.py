@@ -52,7 +52,11 @@ class Migration(migrations.Migration):
 
             DELETE FROM "tblFamilyTypes" 
             WHERE "FamilyTypeCode" not in ('H', 'P');
-            
+
+            UPDATE "tblFamilyTypes" 
+            SET "FamilyType" = 'Polygamous', "AltLanguage" = 'Polygame' 
+            WHERE "FamilyTypeCode" = 'P';            
+
             """
         )
     ]
