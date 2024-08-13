@@ -6,6 +6,11 @@ import random
 import re
 from datetime import datetime
     
+def generate_random_insuree_number():
+    start_number = pow(10, InsureeConfig.get_insuree_number_length()-1)
+    end_number = start_number * 10 - 1
+    ref = random.randrange(start_number, end_number)
+    
 def create_test_insuree(with_family=True, is_head=False, custom_props=None, family_custom_props=None):
     # insuree has a mandatory reference to family and family has a mandatory reference to insuree
     # So we first insert the family with a dummy id and then update it
@@ -13,11 +18,9 @@ def create_test_insuree(with_family=True, is_head=False, custom_props=None, fami
     family = None
     location = None
     village = None
-    start_number = pow(10, InsureeConfig.get_insuree_number_length()-1)
-    end_number = start_number * 10 - 1
-    ref = random.randrange(start_number, end_number)
+    ref = generate_random_insuree_number()
     while validate_insuree_number(ref) != []:
-        ref = random.randrange(start_number, end_number)
+        ref = generate_random_insuree_number()
     if custom_props is not None and 'chf_id' in custom_props:
         ref=custom_props.pop('chf_id')
     insuree = Insuree.objects.filter(chf_id=ref, validity_to__isnull=True).first()

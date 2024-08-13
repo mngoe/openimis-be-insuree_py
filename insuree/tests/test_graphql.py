@@ -205,9 +205,9 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       createInsuree(
         input: {{
           clientMutationId: "{muuid}"
-          clientMutationLabel: "Create insuree - 12343456234"
+          clientMutationLabel: "Create insuree - {self.test_insuree.chf_id+1}"
           
-          chfId: "12343456234"
+          chfId: "{self.test_insuree.chf_id +1}"
     lastName: "test"
     otherNames: "create insuree"
     genderId: "M"
@@ -249,7 +249,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Create Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "4455667788"
+    chfId: "{self.test_insuree.chf_id}"
     lastName: "test"
     otherNames: "create family"
     genderId: "M"
