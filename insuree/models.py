@@ -21,7 +21,7 @@ class Gender(models.Model):
         db_column='SortOrder', blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblGender'
 
 
@@ -52,7 +52,7 @@ class InsureePhoto(core_models.VersionedModel):
         return os.path.join(InsureeConfig.insuree_photos_root_path, self.folder, self.filename)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblPhotos'
 
 
@@ -66,7 +66,7 @@ class FamilyType(models.Model):
         db_column='AltLanguage', max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblFamilyTypes'
 
 
@@ -79,9 +79,10 @@ class ConfirmationType(models.Model):
         db_column='SortOrder', blank=True, null=True)
     alt_language = models.CharField(
         db_column='AltLanguage', max_length=50, blank=True, null=True)
+    is_confirmation_number_required = models.BooleanField(default=False)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblConfirmationTypes'
 
 
@@ -136,9 +137,10 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
                 members__chf_id__in=InsureeConfig.excluded_insuree_chfids
             )
         if settings.ROW_SECURITY and not user.is_imis_admin:
+            from location.schema import  LocationManager
             return queryset.filter(
-                LocationManager().build_user_location_filter_query(user._u, prefix='location__parent__parent', loc_types=['D'])
-            )
+                        LocationManager().build_user_location_filter_query(user._u, prefix='location__parent__parent', loc_types=['D']))
+
         return queryset
 
     class Meta:
@@ -158,7 +160,7 @@ class Profession(models.Model):
         db_column='AltLanguage', max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblProfessions'
 
 
@@ -171,7 +173,7 @@ class Education(models.Model):
         db_column='AltLanguage', max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblEducations'
 
 
@@ -182,7 +184,7 @@ class IdentificationType(models.Model):
     sort_order = models.IntegerField(db_column='SortOrder', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblIdentificationTypes'
 
 
@@ -195,8 +197,25 @@ class Relation(models.Model):
         db_column='AltLanguage', max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblRelations'
+
+
+class InsureeStatus(models.TextChoices):
+    ACTIVE = "AC"
+    INACTIVE = "IN"
+    DEAD = "DE"
+
+
+class InsureeStatusReason(core_models.VersionedModel):
+    id = models.SmallIntegerField(db_column='StatusReasonId', primary_key=True)
+    insuree_status_reason = models.CharField(db_column='StatusReason', max_length=50)
+    code = models.CharField(db_column='Code', max_length=5)
+    status_type = models.CharField(max_length=2, choices=InsureeStatus.choices, default=InsureeStatus.ACTIVE)
+
+    class Meta:
+        managed = True
+        db_table = 'tblInsureeStatusReason'
 
 
 class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
@@ -205,15 +224,16 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
 
     family = models.ForeignKey(Family, models.DO_NOTHING, blank=True, null=True,
                                db_column='FamilyID', related_name="members")
-    chf_id = models.CharField(db_column='CHFID', max_length=12, blank=True, null=True)
+    chf_id = models.CharField(db_column='CHFID', max_length=50, blank=True, null=True)
     last_name = models.CharField(db_column='LastName', max_length=100)
     other_names = models.CharField(db_column='OtherNames', max_length=100)
     gender = models.ForeignKey(Gender, models.DO_NOTHING, db_column='Gender', blank=True, null=True,
                                related_name='insurees')
-    dob = core.fields.DateField(db_column='DOB')
     dead = models.BooleanField(db_column='Dead', blank=True, null=True, default=False)
     dod = core.fields.DateField(db_column='DOD', null=True,)
     deathReason = models.CharField(db_column='DeathReason', max_length=500, null=True,)
+    dob = core.fields.DateField(db_column='DOB', blank=True, null=True)
+
     def age(self, reference_date=None):
         if self.dob:
             today = core.datetime.date.today() if reference_date is None else reference_date
@@ -229,7 +249,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         else:
             return None
 
-    head = models.BooleanField(db_column='IsHead')
+    head = models.BooleanField(db_column='IsHead', default=False)
     marital = models.CharField(db_column='Marital', max_length=1, blank=True, null=True)
 
     passport = models.CharField(max_length=25, blank=True, null=True)
@@ -259,6 +279,12 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         related_name='insurees')
 
     offline = models.BooleanField(db_column='isOffline', blank=True, null=True)
+    status = models.CharField(
+        max_length=2, choices=InsureeStatus.choices, default=InsureeStatus.ACTIVE, blank=True, null=True
+    )
+    status_date = core.fields.DateField(db_column='status_date', null=True, blank=True)
+    status_reason = models.ForeignKey(InsureeStatusReason, models.DO_NOTHING, db_column='StatusReason',
+                                      blank=True, null=True, related_name='insurees')
     audit_user_id = models.IntegerField(db_column='AuditUserID')
     # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
 
@@ -292,8 +318,9 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         if settings.ROW_SECURITY and not user.is_imis_admin:
             return queryset.filter(
                 Q(LocationManager().build_user_location_filter_query(user._u, prefix='current_village__parent__parent', loc_types=['D']) |
-                LocationManager().build_user_location_filter_query(user._u, prefix='family__location__parent__parent', loc_types=['D']))
+                        LocationManager().build_user_location_filter_query(user._u, prefix='family__location__parent__parent', loc_types=['D']))
             )
+
         return queryset
     class Meta:
         managed = True
@@ -333,14 +360,16 @@ class InsureePolicy(core_models.VersionedModel):
         if settings.ROW_SECURITY and user.is_anonymous:
             return queryset.filter(id=-1)
         if settings.ROW_SECURITY and not user.is_imis_admin:
-            return queryset.filter(
+                        # Limit the list by the logged in user location mapping
+            return queryset.filter(                
                 Q(LocationManager().build_user_location_filter_query(user._u, prefix='insuree__current_village__parent__parent', loc_types=['D']) |
                     LocationManager().build_user_location_filter_query(user._u, prefix='insuree__family__location__parent__parent', loc_types=['D']))
             )
+ 
         return queryset
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblInsureePolicy'
 
 
@@ -377,5 +406,5 @@ class PolicyRenewalDetail(core_models.VersionedModel):
     audit_user_id = models.IntegerField(db_column='AuditCreateUser', null=True, blank=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tblPolicyRenewalDetails'
