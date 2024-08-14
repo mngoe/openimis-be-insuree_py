@@ -87,6 +87,12 @@ class InsureeConfig(AppConfig):
         self.__load_config(cfg)
         self._configure_photo_root(cfg)
 
+
+    @classmethod
+    def reset_validation_settings(cls):
+        cls.insuree_number_validator = cls.__get_from_settings_or_default("INSUREE_NUMBER_VALIDATOR")
+        cls.insuree_number_length = cls.__get_from_settings_or_default("INSUREE_NUMBER_LENGTH")
+        cls.insuree_number_modulo_root = cls.__get_from_settings_or_default("INSUREE_NUMBER_MODULE_ROOT")
     # Getting these at runtime for easier testing
     @classmethod
     def get_insuree_number_validator(cls):

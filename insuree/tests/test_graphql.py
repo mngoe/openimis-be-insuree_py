@@ -13,7 +13,7 @@ from graphql_jwt.shortcuts import get_token
 from location.models import Location
 from location.test_helpers import create_test_location, assign_user_districts
 from rest_framework import status
-from insuree.test_helpers import create_test_insuree
+from insuree.test_helpers import create_test_insuree, generate_random_insuree_number
 from location.test_helpers import create_test_location, create_test_health_facility, create_test_village
 from insuree.models import Family
 
@@ -205,9 +205,9 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       createInsuree(
         input: {{
           clientMutationId: "{muuid}"
-          clientMutationLabel: "Create insuree - {self.test_insuree.chf_id+1}"
+          clientMutationLabel: "Create insuree "
           
-          chfId: "{self.test_insuree.chf_id +1}"
+          chfId: "{generate_random_insuree_number()}"
     lastName: "test"
     otherNames: "create insuree"
     genderId: "M"
@@ -249,7 +249,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Create Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "{self.test_insuree.chf_id}"
+    chfId: "{generate_random_insuree_number()}"
     lastName: "test"
     otherNames: "create family"
     genderId: "M"
@@ -293,7 +293,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Update Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "4455667788"
+    chfId: "{generate_random_insuree_number()}"
     uuid: "50f8f2c9-7685-4cd5-a778-b1fa78d46470"
     lastName: "test"
     otherNames: "create family"

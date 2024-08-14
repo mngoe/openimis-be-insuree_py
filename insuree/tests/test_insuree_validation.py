@@ -18,6 +18,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR='insuree.tests.test_insuree_validation.fail1',
                 INSUREE_NUMBER_LENGTH=None,
                 INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(validate_insuree_number(None), [])
             self.assertEqual(validate_insuree_number("valid"), [])
             self.assertEqual(validate_insuree_number("fail1"), ["fail1"])
@@ -25,6 +26,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=None,
                 INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(validate_insuree_number(None), [])
             self.assertEqual(validate_insuree_number("valid"), [])
             self.assertEqual(validate_insuree_number("fail1"), [])
@@ -34,6 +36,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=5,
                 INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(len(validate_insuree_number(None)), 1)
             self.assertEqual(len(validate_insuree_number("")), 1)
             self.assertEqual(len(validate_insuree_number("foo")), 1)
@@ -43,6 +46,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=7,
                 INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(len(validate_insuree_number("12345")), 1)
             self.assertEqual(len(validate_insuree_number("1234567")), 0)
 
@@ -51,6 +55,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=5,
                 INSUREE_NUMBER_MODULE_ROOT=7):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(len(validate_insuree_number(None)), 1)
             self.assertEqual(len(validate_insuree_number("12342")), 0)
             self.assertEqual(len(validate_insuree_number("12345")), 1)
@@ -59,6 +64,7 @@ class InsureeValidationTest(TestCase):
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=7,
                 INSUREE_NUMBER_MODULE_ROOT=5):
+            InsureeConfig.reset_validation_settings()
             self.assertEqual(len(validate_insuree_number("12345")), 1)
             self.assertEqual(len(validate_insuree_number("1234561")), 0)
             self.assertEqual(len(validate_insuree_number("1234560")), 1)
