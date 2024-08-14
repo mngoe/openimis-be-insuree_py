@@ -7,7 +7,7 @@ import re
 from datetime import datetime
     
 def generate_random_insuree_number():
-    start_number = pow(10, InsureeConfig.get_insuree_number_length()-1)
+    start_number = pow(10, (InsureeConfig.get_insuree_number_length() or 8) - 1)
     end_number = start_number * 10 - 1
     return random.randrange(start_number, end_number)
     
