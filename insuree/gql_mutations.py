@@ -5,7 +5,7 @@ import pathlib
 import base64
 import graphene
 
-from insuree.services import validate_insuree_number, InsureeService, FamilyService
+from insuree.services import validate_insuree_number, InsureeService, FamilyService, validate_temporary_insuree_number, TemporaryInsureeService
 
 from .apps import InsureeConfig
 from core.schema import OpenIMISMutation
@@ -13,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils.translation import gettext as _
 from graphene import InputObjectType
-from .models import Family, Insuree, FamilyMutation, InsureeMutation
+from .models import Family, Insuree, FamilyMutation, InsureeMutation, TemporaryInsuree, TemporaryInsureeMutation
 from policy.models import Policy
 from location import models as location_models
 
@@ -64,10 +64,18 @@ class InsureeBase:
     offline = graphene.Boolean(required=False)
     json_ext = graphene.types.json.JSONString(required=False)
 
+class TemporaryInsureeBase:
+    id = graphene.Int(required=False, read_only=True)
+    uuid = graphene.String(required=False)
+    chf_id = graphene.String(max_length=12, required=False)
+    temporaryMPI = graphene.String(max_length=36, required=False)
+    json_ext = graphene.types.json.JSONString(required=False)
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
     pass
 
+class CreateTemporaryInsureeInputType(TemporaryInsureeBase, OpenIMISMutation.Input):
+    pass
 
 class UpdateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
     pass
@@ -130,6 +138,10 @@ def update_or_create_insuree(data, user):
     data.pop('client_mutation_label', None)
     return InsureeService(user).create_or_update(data)
 
+def update_or_create_temporary_insuree(data, user):
+    data.pop('client_mutation_id', None)
+    data.pop('client_mutation_label', None)
+    return TemporaryInsureeService(user).create_or_update(data)
 
 def update_or_create_family(data, user):
     data.pop('client_mutation_id', None)
@@ -554,3 +566,104 @@ class CreateInsureesFamiliesMutation(OpenIMISMutation):
                 'message': _("insuree.mutation.failed_to_create_families"),
                 'detail': str(exc)}
             ]
+              
+class CreateTemporaryInsureeMutation(OpenIMISMutation):
+    """
+    Create a new temporary insuree
+    """
+    _mutation_module = "insuree"
+    _mutation_class = "CreateTemporaryInsureeMutation"
+
+    class Input(CreateTemporaryInsureeInputType):
+        pass
+
+    @classmethod
+    def async_mutate(cls, user, **data):
+        try:
+            if type(user) is AnonymousUser or not user.id:
+                raise ValidationError(
+                    _("mutation.authentication_required"))
+            if not user.has_perms(InsureeConfig.gql_mutation_create_insurees_perms):
+                raise PermissionDenied(_("unauthorized"))
+            data['audit_user_id'] = user.id_for_audit
+            from core.utils import TimeUtils
+            data['validity_from'] = TimeUtils.now()
+            client_mutation_id = data.get("client_mutation_id")
+            # Validate insuree number right away
+            errors = validate_temporary_insuree_number(data.get("chf_id", None), True)
+            if errors:
+                return errors
+            insuree = update_or_create_temporary_insuree(data, user)
+            TemporaryInsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, temporaryInsuree=insuree)
+            return None
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_create_insuree")
+            return [{
+                'message': _("insuree.mutation.failed_to_create_insuree"),
+                'detail': str(exc)}
+            ]
+
+
+class UpdateTemporaryInsureeMutation(OpenIMISMutation):
+    """
+    Update an existing temporary insuree
+    """
+    _mutation_module = "insuree"
+    _mutation_class = "UpdateTemporaryInsureeMutation"
+
+    class Input(CreateTemporaryInsureeInputType):
+        pass
+
+    @classmethod
+    def async_mutate(cls, user, **data):
+        try:
+            if type(user) is AnonymousUser or not user.id:
+                raise ValidationError(
+                    _("mutation.authentication_required"))
+            if not user.has_perms(InsureeConfig.gql_mutation_create_insurees_perms):
+                raise PermissionDenied(_("unauthorized"))
+            data['audit_user_id'] = user.id_for_audit
+            client_mutation_id = data.get("client_mutation_id")
+            insuree = update_or_create_temporary_insuree(data, user)
+
+            TemporaryInsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, temporaryInsuree=insuree)
+            return None
+        except Exception as exc:
+            logger.exception("insuree.mutation.failed_to_update_temporary_insuree")
+            return [{
+                'message': _("insuree.mutation.failed_to_update_temporary_insuree"),
+                'detail': str(exc)}
+            ]
+
+
+class DeleteTemporaryInsureesMutation(OpenIMISMutation):
+    """
+    Delete one or several temporary insurees.
+    """
+    _mutation_module = "insuree"
+    _mutation_class = "DeleteTemporaryInsureesMutation"
+
+    class Input(OpenIMISMutation.Input):
+        uuid = graphene.String(required=False)  # family uuid, to 'lock' family while mutation is processed
+        uuids = graphene.List(graphene.String)
+
+    @classmethod
+    def async_mutate(cls, user, **data):
+        if not user.has_perms(InsureeConfig.gql_mutation_delete_insurees_perms):
+            raise PermissionDenied(_("unauthorized"))
+        errors = []
+        for insuree_uuid in data["uuids"]:
+            insuree = TemporaryInsuree.objects \
+                .filter(uuid=insuree_uuid) \
+                .first()
+            if insuree is None:
+                errors.append({
+                    'title': insuree_uuid,
+                    'list': [{'message': _(
+                        "insuree.validation.id_does_not_exist") % {'id': insuree_uuid}}]
+                })
+                continue
+            errors += TemporaryInsureeService(user).set_deleted(insuree)
+        if len(errors) == 1:
+            errors = errors[0]['list']
+        return errors

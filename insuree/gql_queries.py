@@ -3,7 +3,7 @@ from graphene_django import DjangoObjectType
 
 from .apps import InsureeConfig
 from .models import Insuree, InsureePhoto, Education, Profession, Gender, IdentificationType, \
-    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation
+    Family, FamilyType, ConfirmationType, Relation, InsureePolicy, FamilyMutation, InsureeMutation, TemporaryInsuree, TemporaryInsureeMutation
 from location.schema import LocationGQLType
 from policy.gql_queries import PolicyGQLType
 from core import prefix_filterset, filter_validity, ExtendedConnection
@@ -216,3 +216,32 @@ class FamilyMutationGQLType(DjangoObjectType):
 class InsureeMutationGQLType(DjangoObjectType):
     class Meta:
         model = InsureeMutation
+
+class TemporaryInsureeGQLType(DjangoObjectType):
+    client_mutation_id = graphene.String()
+
+    class Meta:
+        model = TemporaryInsuree
+        filter_fields = {
+            "uuid": ["exact"],
+            "chf_id": ["exact", "istartswith", "icontains", "iexact"],
+            "temporaryMPI": ["exact", "istartswith", "icontains", "iexact"],
+            "validity_from": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+            "validity_to": ["exact", "lt", "lte", "gt", "gte", "isnull"],
+        }
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
+
+    def resolve_client_mutation_id(self, info):
+        insuree_mutation = self.mutations.select_related(
+            'mutation').filter(mutation__status=0).first()
+        return insuree_mutation.mutation.client_mutation_id if insuree_mutation else None
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return TemporaryInsuree.get_queryset(queryset, info)
+
+
+class TemporaryInsureeMutationGQLType(DjangoObjectType):
+    class Meta:
+        model = TemporaryInsureeMutation

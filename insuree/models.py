@@ -381,3 +381,49 @@ class PolicyRenewalDetail(core_models.VersionedModel):
     class Meta:
         managed = False
         db_table = 'tblPolicyRenewalDetails'
+
+class TemporaryInsuree(core_models.VersionedModel, core_models.ExtendableModel):
+    id = models.AutoField(db_column='TemporaryInsureeID', primary_key=True)
+    uuid = models.CharField(db_column='TemporaryInsureeUUID', max_length=36, default=uuid.uuid4, unique=True)
+    chf_id = models.CharField(db_column='CHFID', max_length=12, blank=True, null=True)
+    temporaryMPI = models.CharField(db_column='TemporaryMPI', max_length=36, blank=True, null=True)
+    audit_user_id = models.IntegerField(db_column='AuditUserID')
+
+    def __str__(self):
+        return f"{self.chf_id}"
+
+    @classmethod
+    def filter_queryset(cls, queryset=None):
+        if queryset is None:
+            queryset = cls.objects.all()
+        return queryset
+
+    @classmethod
+    def get_queryset(cls, queryset, user):
+        queryset = cls.filter_queryset(queryset)
+        # GraphQL calls with an info object while Rest calls with the user itself
+        if isinstance(user, ResolveInfo):
+            user = user.context.user
+        if settings.ROW_SECURITY and user.is_anonymous:
+            return queryset.filter(id=-1)
+        if InsureeConfig.excluded_insuree_chfids:
+            queryset = queryset.exclude(
+                chf_id__in=InsureeConfig.excluded_insuree_chfids
+            )
+        
+        return queryset
+    class Meta:
+        managed = True
+        db_table = 'tblTemporaryInsuree'
+        indexes = [
+            models.Index(fields=['legacy_id', 'validity_from', 'validity_to', 'chf_id'])
+        ]
+
+
+class TemporaryInsureeMutation(core_models.UUIDModel, core_models.ObjectMutation):
+    temporaryInsuree = models.ForeignKey(TemporaryInsuree, models.DO_NOTHING, related_name='mutations')
+    mutation = models.ForeignKey(core_models.MutationLog, models.DO_NOTHING, related_name='temporaryInsurees')
+
+    class Meta:
+        managed = True
+        db_table = "insuree_TemporaryInsureeMutation"
