@@ -478,7 +478,6 @@ class FamilyService:
 
         data['audit_user_id'] = self.user.id_for_audit
         data['validity_from'] = now
-        print("AAAA ", data)
         family = Family(**data)
         return self._create_or_update(family)
 
