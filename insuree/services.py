@@ -11,6 +11,7 @@ from django.utils.translation import gettext as _
 
 from core.signals import register_service_signal
 from insuree.apps import InsureeConfig
+from insuree.gql_mutations import create_insuree_family
 from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy
 from cs.models import ChequeImportLine
 
@@ -199,6 +200,7 @@ class InsureeService:
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
         photo = data.pop('photo', None)
+        client_mutation_id = data.pop('client_mutation_id_save', None)
         from core import datetime
         now = datetime.datetime.now()
         data['audit_user_id'] = self.user.id_for_audit
@@ -229,6 +231,9 @@ class InsureeService:
                 raise Exception("Invalid insuree number")
             else:
                 insuree = Insuree.objects.create(**data)
+                if not insuree.family:
+                    print("Auto Create Familly")
+                    create_insuree_family(self.user, client_mutation_id, insuree)
                 # currentCheque = ChequeImportLine.objects.filter(chequeImportLineCode=data["chf_id"],chequeImportLineStatus='new')
                 # currentCheque = currentCheque[0]
                 # setattr(currentCheque,"chequeImportLineStatus","Used")
