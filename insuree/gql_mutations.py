@@ -126,7 +126,8 @@ def create_file(date, insuree_id, photo_bin):
 
 
 def update_or_create_insuree(data, user):
-    data.pop('client_mutation_id', None)
+    data["client_mutation_id_save"] = data.pop('client_mutation_id', None)
+    # data.pop('client_mutation_id', None)
     data.pop('client_mutation_label', None)
     return InsureeService(user).create_or_update(data)
 
@@ -266,9 +267,6 @@ class CreateInsureeMutation(OpenIMISMutation):
                 return errors
             insuree = update_or_create_insuree(data, user)
             InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
-            # Check if insuree already has a family
-            if not insuree.family:
-                create_insuree_family(user, client_mutation_id, insuree)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_insuree")
