@@ -13,6 +13,8 @@ from core.signals import register_service_signal
 from insuree.apps import InsureeConfig
 from insuree.models import InsureePhoto, PolicyRenewalDetail, Insuree, Family, InsureePolicy
 from cs.models import ChequeImportLine
+from location import models as location_models
+from .models import FamilyMutation, InsureeMutation
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +193,61 @@ def load_photo_file(file_dir, file_name):
     with open(photo_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
+def create_insuree_family(user,client_mutation_id, insuree):
+    data = {}
+    data['audit_user_id'] = user.id_for_audit
+    from core.utils import TimeUtils
+    data['validity_from'] = TimeUtils.now()
+
+    head_insuree_data = {
+        'id': insuree.id,
+        'uuid': insuree.uuid,
+        'chf_id': insuree.chf_id,
+        'last_name': insuree.last_name,
+        'other_names': insuree.other_names,
+        'gender_id': insuree.gender_id,
+        'dob': insuree.dob,
+        'head': insuree.head,
+        'marital': insuree.marital,
+        'passport': insuree.passport,
+        'phone': insuree.phone,
+        'email': insuree.email,
+        'current_address': insuree.current_address,
+        'geolocation': insuree.geolocation,
+        'current_village_id': insuree.current_village_id,
+        'photo_id': insuree.photo_id,
+        'photo_date': insuree.photo_date,
+        'card_issued': insuree.card_issued,
+        'relationship_id': insuree.relationship_id,
+        'profession_id': insuree.profession_id,
+        'education_id': insuree.education_id,
+        'type_of_id_id': insuree.type_of_id_id,
+        'health_facility_id': insuree.health_facility_id,
+        'offline': insuree.offline,
+        'audit_user_id': insuree.audit_user_id
+    }
+
+    data['head_insuree'] = head_insuree_data
+
+    if (head_insuree_data["current_village_id"]):
+        current_village_id = head_insuree_data["current_village_id"]
+        current_village = location_models.Location.objects.get(id=current_village_id)
+        data["location"] = current_village
+    else:
+        data["location"] = location_models.Location.objects.get(id=1)
+
+    family = FamilyService(user).create_or_update(data)
+    FamilyMutation.object_mutated(
+        user, client_mutation_id=client_mutation_id, family=family)
+
+    insuree.family = family
+    insuree.save()
+    InsureeMutation.object_mutated(
+            user, client_mutation_id=client_mutation_id, insuree=insuree)
+
+    logger.debug(f"Famille créée pour l'assuré {insuree.chf_id}")
+
+    return None  
 
 class InsureeService:
     def __init__(self, user):
@@ -199,6 +256,7 @@ class InsureeService:
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
         photo = data.pop('photo', None)
+        client_mutation_id = data.pop('client_mutation_id_save', None)
         from core import datetime
         now = datetime.datetime.now()
         data['audit_user_id'] = self.user.id_for_audit
@@ -229,6 +287,9 @@ class InsureeService:
                 raise Exception("Invalid insuree number")
             else:
                 insuree = Insuree.objects.create(**data)
+                if not insuree.family:
+                    print("Auto Create Familly")
+                    create_insuree_family(self.user, client_mutation_id, insuree)
                 # currentCheque = ChequeImportLine.objects.filter(chequeImportLineCode=data["chf_id"],chequeImportLineStatus='new')
                 # currentCheque = currentCheque[0]
                 # setattr(currentCheque,"chequeImportLineStatus","Used")
