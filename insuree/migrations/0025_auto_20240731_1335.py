@@ -30,22 +30,82 @@ class Migration(migrations.Migration):
 
             INSERT INTO "core_ModuleConfiguration" 
             (id, module, version, config, is_exposed, layer) 
-            VALUES 
-            ('472ad188-0882-4f31-8b1a-34606ed8e255', 'insuree', 1, '{ "comores_features_enabled": true }', 't', 'be');
+            SELECT '472ad188-0882-4f31-8b1a-34606ed8e255', 'insuree', 1, '{ "comores_features_enabled": true }', 't', 'be'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "core_ModuleConfiguration"
+                WHERE id = '472ad188-0882-4f31-8b1a-34606ed8e255'
+            );
 
-            INSERT INTO "tblIncomeLevels" 
-            ("FrenchVersion", "EnglishVersion") VALUES
-            ('Néant', 'Nothing'),
-            ('<30 000', '<30 000'),
-            ('30 000-40 000', '30 000-40 000'),
-            ('40 000-50 000', '40 000-50 000'),
-            ('50 000-60 000', '50 000-60 000'),
-            ('60 000-75 000', '60 000-75 000'),
-            ('75 000-200 000', '75 000-200 000'),
-            ('200 000-300 000', '200 000-300 000'),
-            ('300 000-600 000', '300 000-600 000'),
-            ('>600 000', '>600 000');
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT 'Néant', 'Nothing'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = 'Néant' AND "EnglishVersion" = 'Nothing'
+            );
 
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '<30 000', '<30 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '<30 000' AND "EnglishVersion" = '<30 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '30 000-40 000', '30 000-40 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '30 000-40 000' AND "EnglishVersion" = '30 000-40 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '40 000-50 000', '40 000-50 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '40 000-50 000' AND "EnglishVersion" = '40 000-50 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '50 000-60 000', '50 000-60 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '50 000-60 000' AND "EnglishVersion" = '50 000-60 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '60 000-75 000', '60 000-75 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '60 000-75 000' AND "EnglishVersion" = '60 000-75 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '75 000-200 000', '75 000-200 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '75 000-200 000' AND "EnglishVersion" = '75 000-200 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '200 000-300 000', '200 000-300 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '200 000-300 000' AND "EnglishVersion" = '200 000-300 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '300 000-600 000', '300 000-600 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '300 000-600 000' AND "EnglishVersion" = '300 000-600 000'
+            );
+
+            INSERT INTO "tblIncomeLevels" ("FrenchVersion", "EnglishVersion")
+            SELECT '>600 000', '>600 000'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "tblIncomeLevels"
+                WHERE "FrenchVersion" = '>600 000' AND "EnglishVersion" = '>600 000'
+            );
+            
             UPDATE "tblFamilies" 
             SET "FamilyType" ='H' 
             WHERE "FamilyType" not in ('H', 'P');
