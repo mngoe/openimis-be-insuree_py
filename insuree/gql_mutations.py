@@ -265,10 +265,13 @@ class CreateInsureeMutation(OpenIMISMutation):
             if errors:
                 return errors
             insuree = update_or_create_insuree(data, user)
-            InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
-            # Check if insuree already has a family
             if not insuree.family:
                 create_insuree_family(user, client_mutation_id, insuree)
+            InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
+            # Check if insuree already has a family
+            print("ABCDEF")
+            # if not insuree.family:
+            #     create_insuree_family(user, client_mutation_id, insuree)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_insuree")
