@@ -198,7 +198,6 @@ class InsureeService:
 
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
-        print("ICI.....")
         photo = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
