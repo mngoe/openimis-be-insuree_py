@@ -128,6 +128,7 @@ def create_file(date, insuree_id, photo_bin):
 def update_or_create_insuree(data, user):
     data.pop('client_mutation_id', None)
     data.pop('client_mutation_label', None)
+    print("12345678**")
     return InsureeService(user).create_or_update(data)
 
 
@@ -251,6 +252,7 @@ class CreateInsureeMutation(OpenIMISMutation):
     @classmethod
     def async_mutate(cls, user, **data):
         try:
+            print("***********")
             if type(user) is AnonymousUser or not user.id:
                 raise ValidationError(
                     _("mutation.authentication_required"))
@@ -265,7 +267,9 @@ class CreateInsureeMutation(OpenIMISMutation):
             if errors:
                 return errors
             insuree = update_or_create_insuree(data, user)
+            print("faille: ", insuree.family)
             if not insuree.family:
+                print("Creation de la famille")
                 create_insuree_family(user, client_mutation_id, insuree)
             InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
             # Check if insuree already has a family
