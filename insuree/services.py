@@ -68,6 +68,7 @@ def validate_insuree_number(insuree_number, insuree_uuid=None):
     query = Insuree.objects.filter(
         chf_id=insuree_number, validity_to__isnull=True)
     insuree = query.first()
+    print("insuree ", insuree)
     print("insuree_number ", insuree_number)
     print("insuree_uuid ", insuree_uuid)
     print("insuree.uuid ", insuree.uuid)
