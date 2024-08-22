@@ -291,6 +291,7 @@ class InsureeService:
 
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
+        print("create_or_update 111")
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
@@ -350,6 +351,7 @@ class InsureeService:
                 current_policy.save()
 
     def _create_or_update(self, insuree, photo_data=None):
+        print("_create_or_update****")
         if not InsureeConfig.comores_features_enabled:
             if not insuree.chf_id:
                 raise Exception(f"Aucun CHFID renseigné pourtant le système n'a pas la configuration de Comores active")
