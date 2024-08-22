@@ -325,6 +325,7 @@ class InsureeService:
                         formatted_num = str(random_num).zfill(5)
                         data["chf_id"] = data["passport"] + str(formatted_num)
                 insuree = Insuree.objects.create(**data)
+            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if "uuid" not in data:
             if InsureeConfig.comores_features_enabled:
                 print("Auto genate CHFID")
@@ -335,7 +336,6 @@ class InsureeService:
                     random_num = random.randint(min_num, max_num)
                     formatted_num = str(random_num).zfill(5)
                     data["chf_id"] = data["passport"] + str(formatted_num)
-            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             raise ValidationError("mutation.insuree.fsp_required")
 
