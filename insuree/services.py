@@ -325,6 +325,16 @@ class InsureeService:
                         formatted_num = str(random_num).zfill(5)
                         data["chf_id"] = data["passport"] + str(formatted_num)
                 insuree = Insuree.objects.create(**data)
+        if "uuid" not in data:
+            if InsureeConfig.comores_features_enabled:
+                print("Auto genate CHFID")
+                min_num = 1
+                max_num = 99999
+                formatted_num = 0
+                while formatted_num == 0 or Insuree.objects.filter(chf_id=formatted_num).exists():
+                    random_num = random.randint(min_num, max_num)
+                    formatted_num = str(random_num).zfill(5)
+                    data["chf_id"] = data["passport"] + str(formatted_num)
             self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             raise ValidationError("mutation.insuree.fsp_required")
@@ -374,14 +384,16 @@ class InsureeService:
         else:
             if InsureeConfig.comores_features_enabled:
                 if insuree.head != True:
-                    # Si c'est le head insuree son chfid aura deja été généré grace au NIN de la famille
-                    min_num = 1
-                    max_num = 99999
-                    formatted_num = 0
-                    while formatted_num == 0 or Insuree.objects.filter(chf_id=formatted_num).exists():
-                        random_num = random.randint(min_num, max_num)
-                        formatted_num = str(random_num).zfill(5)
-                        insuree.chf_id = str(insuree.passport) + str(formatted_num)
+                    print("insuree.chf_id ", insuree.chf_id)
+                    if not insuree.chf_id: #Si le CHFID n'a pas deja été généré on genere
+                        # Si c'est le head insuree son chfid aura deja été généré grace au NIN de la famille
+                        min_num = 1
+                        max_num = 99999
+                        formatted_num = 0
+                        while formatted_num == 0 or Insuree.objects.filter(chf_id=formatted_num).exists():
+                            random_num = random.randint(min_num, max_num)
+                            formatted_num = str(random_num).zfill(5)
+                            insuree.chf_id = str(insuree.passport) + str(formatted_num)
         insuree.save()
         if photo_data:
             photo = handle_insuree_photo(self.user, insuree.validity_from, insuree, photo_data)
