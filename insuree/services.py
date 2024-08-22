@@ -292,7 +292,7 @@ class InsureeService:
 
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
-        print("create_or_update 111")
+        print("create_or_update 111 ", InsureeConfig.comores_features_enabled)
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
