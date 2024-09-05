@@ -85,6 +85,8 @@ def create_test_insuree(with_family=True, is_head=False, custom_props=None, fami
                 **custom_props
             }
         )
+    if family is None:
+        family = Family.objects.filter(head_insuree=insuree, *filter_validity()).first()
     if with_family and family is None and insuree.family is None:
         if not family_custom_props:
             family_custom_props = {}
