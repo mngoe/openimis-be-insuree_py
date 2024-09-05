@@ -91,7 +91,8 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
     id = models.AutoField(db_column='FamilyID', primary_key=True)
     uuid = models.CharField(db_column='FamilyUUID',
                             max_length=36, default=uuid.uuid4, unique=True)
-    head_insuree = models.OneToOneField(
+    # needed because the version model: on head can be on several families (diff validity_to)
+    head_insuree = models.ForeignKey(
         'Insuree', models.DO_NOTHING, db_column='InsureeID', null=False,
         related_name='head_of')
     location = models.ForeignKey(
