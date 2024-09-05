@@ -1,5 +1,5 @@
 import logging
-import uuid
+from uuid import uuid4, UUID
 import pathlib
 import base64
 import graphene
@@ -303,7 +303,7 @@ class DeleteInsureesMutation(OpenIMISMutation):
         for insuree_uuid in data["uuids"]:
             insuree = Insuree.objects \
                 .prefetch_related('family') \
-                .filter(uuid__iexact=insuree_uuid) \
+                .filter(uuid=UUID(str(insuree_uuid))) \
                 .first()
             if insuree is None:
                 errors.append({
