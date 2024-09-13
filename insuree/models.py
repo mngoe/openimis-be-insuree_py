@@ -384,7 +384,6 @@ class PolicyRenewalDetail(core_models.VersionedModel):
 
 class TemporaryInsuree(core_models.VersionedModel, core_models.ExtendableModel):
     id = models.AutoField(db_column='TemporaryInsureeID', primary_key=True)
-    uuid = models.CharField(db_column='TemporaryInsureeUUID', max_length=36, default=uuid.uuid4, unique=True)
     chf_id = models.CharField(db_column='CHFID', max_length=12, blank=True, null=True)
     temporaryMPI = models.CharField(db_column='TemporaryMPI', max_length=36, blank=True, null=True)
     audit_user_id = models.IntegerField(db_column='AuditUserID')

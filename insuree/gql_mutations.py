@@ -69,7 +69,6 @@ class TemporaryInsureeBase:
     uuid = graphene.String(required=False)
     chf_id = graphene.String(max_length=12, required=False)
     temporaryMPI = graphene.String(max_length=36, required=False)
-    json_ext = graphene.types.json.JSONString(required=False)
 
 class CreateInsureeInputType(InsureeBase, OpenIMISMutation.Input):
     pass
@@ -249,6 +248,18 @@ class DeleteFamiliesMutation(OpenIMISMutation):
             errors = errors[0]['list']
         return errors
 
+def create_temporary_insuree(insuree):
+    """
+    Create a TemporaryInsuree based on the newly created Insuree.
+    """
+    try:
+        TemporaryInsuree.objects.create(
+            chf_id=insuree.chf_id,
+            temporaryMPI=insuree.uuid,
+            audit_user_id=insuree.audit_user_id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to create TemporaryInsuree: {str(e)}")
 
 class CreateInsureeMutation(OpenIMISMutation):
     """
@@ -277,6 +288,10 @@ class CreateInsureeMutation(OpenIMISMutation):
             if errors:
                 return errors
             insuree = update_or_create_insuree(data, user)
+
+            # Create a TemporaryInsuree
+            create_temporary_insuree(insuree)
+
             InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
             return None
         except Exception as exc:
