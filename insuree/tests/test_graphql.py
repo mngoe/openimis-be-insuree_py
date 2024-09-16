@@ -17,7 +17,7 @@ from insuree.test_helpers import create_test_insuree, generate_random_insuree_nu
 from location.test_helpers import create_test_location, create_test_health_facility, create_test_village
 from insuree.models import Family
 
-
+from insuree.apps import InsureeConfig
 # from openIMIS import schema
 
 
@@ -417,21 +417,53 @@ query GetInsureeInquire($chfId: String) {
       self.assertResponseNoErrors(response)
       
       
-    def test_validate_number_validditiy_with_variables(self):
-        response = self.query(
-            '''
-    query ($insuranceNumber: String!) {
-      insureeNumberValidity(insureeNumber: $insuranceNumber) {
-        isValid
-        errorCode
-        errorMessage
-      }
-    }
-            ''',
-            headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
-            variables={"insuranceNumber": "070707070"}        )
+    def test_validate_number_unvalidity_with_variables(self):
+        with self.settings(
+            INSUREE_NUMBER_VALIDATOR=None,
+            INSUREE_NUMBER_LENGTH=9,
+            INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
+            response = self.query(
+                '''
+        query ($insuranceNumber: String!) {
+          insureeNumberValidity(insureeNumber: $insuranceNumber) {
+            isValid
+            errorCode
+            errorMessage
+          }
+        }
+                ''',
+                headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
+                variables={"insuranceNumber": "07070"}        )
 
-        content = json.loads(response.content)
+            content = json.loads(response.content)
 
-        # This validates the status code and if you get errors
-        self.assertResponseNoErrors(response)
+            # This validates the status code and if you get errors
+            self.assertResponseNoErrors(response)
+            self.assertFalse(content['data']['insureeNumberValidity']['isValid'])
+            
+
+    def test_validate_number_validity_with_variables(self):
+        with self.settings(
+                INSUREE_NUMBER_VALIDATOR=None,
+                INSUREE_NUMBER_LENGTH=9,
+                INSUREE_NUMBER_MODULE_ROOT=None):
+            InsureeConfig.reset_validation_settings()
+            response = self.query(
+              '''
+              query ($insuranceNumber: String!) {
+                insureeNumberValidity(insureeNumber: $insuranceNumber) {
+                  isValid
+                  errorCode
+                  errorMessage
+                }
+              }
+              ''',
+              headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
+              variables={"insuranceNumber": "070707070"})
+
+            content = json.loads(response.content)
+
+            # This validates the status code and if you get errors
+            self.assertResponseNoErrors(response)
+            self.assertTrue(content['data']['insureeNumberValidity']['isValid'])
