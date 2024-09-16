@@ -438,7 +438,7 @@ query GetInsureeInquire($chfId: String) {
         self.assertFalse(content['data']['insureeNumberValidity']['isValid'])
         
 
-    def test_validate_number_validitiy_with_variables(self):
+    def test_validate_number_validity_with_variables(self):
         with self.settings(
                 INSUREE_NUMBER_VALIDATOR=None,
                 INSUREE_NUMBER_LENGTH=9,

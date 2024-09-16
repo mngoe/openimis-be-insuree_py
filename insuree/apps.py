@@ -126,7 +126,11 @@ class InsureeConfig(AppConfig):
 
     @classmethod
     def __get_from_settings_or_default(cls, attribute_name, default=None):
-        return getattr(settings, attribute_name) if hasattr(settings, attribute_name) else default
+        if hasattr(settings, attribute_name):
+            value = getattr(settings, attribute_name) or default
+        else:
+            value = default
+        return value
 
     def _configure_photo_root(self, cfg):
         # TODO: To be confirmed. I left loading from config for integrity reasons
