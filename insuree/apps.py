@@ -26,7 +26,8 @@ DEFAULT_CFG = {
     "renewal_photo_age_child": 12,  # age (in months) of a picture due for renewal for children
     "insuree_number_validator": None,  # Insuree number *function* that validates the insuree number for example
                                        # 'msystems.utils.is_valid_resident_identifier'
-    "insuree_number_length": 9,  # Insuree number length to validate
+    "insuree_number_max_length": None,  # Insuree number length to validate
+    "insuree_number_min_length": None,  # Insuree number length to validate
     "insuree_number_modulo_root": None,  # modulo base for checksum on last digit, requires length to be set too
     "validation_code_taken_insuree_number": 1,
     "validation_code_no_insuree_number": 2,
@@ -70,7 +71,8 @@ class InsureeConfig(AppConfig):
     renewal_photo_age_adult = None
     renewal_photo_age_child = None
     insuree_number_validator = None
-    insuree_number_length = None
+    insuree_number_max_length = None
+    insuree_number_min_length = None
     insuree_number_modulo_root = None
     insuree_fsp_mandatory = None
     insuree_as_worker = None
@@ -93,30 +95,23 @@ class InsureeConfig(AppConfig):
     def reset_validation_settings(cls):
         cls.insuree_number_validator = cls.__get_from_settings_or_default(
             "INSUREE_NUMBER_VALIDATOR", 
-            cls.insuree_number_validator
+            DEFAULT_CFG['insuree_number_validator']
         )
-        cls.insuree_number_length = cls.__get_from_settings_or_default(
+        value = cls.__get_from_settings_or_default(
             "INSUREE_NUMBER_LENGTH",
-            cls.insuree_number_length
         )
-        cls.insuree_number_modulo_root = cls.__get_from_settings_or_default(
-            "INSUREE_NUMBER_MODULE_ROOT",
-            cls.insuree_number_modulo_root
+        if value:
+            cls.insuree_number_max_length = int(value)
+            cls.insuree_number_min_length = int(value)
+        else:
+            cls.insuree_number_max_length = DEFAULT_CFG['insuree_number_max_length']
+            cls.insuree_number_min_length = DEFAULT_CFG['insuree_number_min_length']
+            
+        value = cls.__get_from_settings_or_default(
+            "INSUREE_NUMBER_MODULE_ROOT"
         )
-    # Getting these at runtime for easier testing
-    @classmethod
-    def get_insuree_number_validator(cls):
-        return cls.insuree_number_validator or cls.__get_from_settings_or_default("INSUREE_NUMBER_VALIDATOR")
+        cls.insuree_number_modulo_root = int(value) if value else DEFAULT_CFG['insuree_number_modulo_root']
 
-    @classmethod
-    def get_insuree_number_length(cls):
-        value = cls.insuree_number_length or cls.__get_from_settings_or_default("INSUREE_NUMBER_LENGTH")
-        return int(value) if value else None
-
-    @classmethod
-    def get_insuree_number_modulo_root(cls):
-        value = cls.insuree_number_modulo_root or cls.__get_from_settings_or_default("INSUREE_NUMBER_MODULE_ROOT")
-        return int(value) if value else None
 
     def set_dataloaders(self, dataloaders):
         from .dataloaders import InsureeLoader, FamilyLoader

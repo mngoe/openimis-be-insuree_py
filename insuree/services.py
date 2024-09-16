@@ -48,7 +48,7 @@ def create_insuree_renewal_detail(policy_renewal):
 
 
 def custom_insuree_number_validation(insuree_number):
-    function_string = InsureeConfig.get_insuree_number_validator()
+    function_string = InsureeConfig.insuree_number_validator
     try:
         mod, name = function_string.rsplit('.', 1)
         module = import_module(mod)
@@ -65,34 +65,42 @@ def custom_insuree_number_validation(insuree_number):
 
 def validate_insuree_number(insuree_number, insuree_uuid=None):
     insuree_number = str(insuree_number)
-    query = Insuree.objects.filter(
-        chf_id=insuree_number, validity_to__isnull=True)
-    insuree = query.first()
-    if insuree_uuid and insuree and uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
-        return [{"errorCode": InsureeConfig.validation_code_taken_insuree_number,
-                 "message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
 
-    if InsureeConfig.get_insuree_number_validator():
+    if InsureeConfig.insuree_number_validator:
         return custom_insuree_number_validation(insuree_number)
-    if InsureeConfig.get_insuree_number_length():
+    if InsureeConfig.insuree_number_max_length:
         if not insuree_number:
             return [
                 {
                     "errorCode": InsureeConfig.validation_code_no_insuree_number,
-                    "message": "Invalid insuree number (empty), should be %s" %
-                               (InsureeConfig.get_insuree_number_length(),)
+                    "message": _("Invalid insuree number (empty), should be %s") %
+                    (InsureeConfig.insuree_number_max_length,)
                 }
             ]
-        if len(insuree_number) != InsureeConfig.get_insuree_number_length():
+        if len(insuree_number) > InsureeConfig.insuree_number_max_length:
             return [
                 {
                     "errorCode": InsureeConfig.validation_code_invalid_insuree_number_len,
-                    "message": "Invalid insuree number length %s, should be %s" %
-                               (len(insuree_number),
-                                InsureeConfig.get_insuree_number_length())
+                    "message": _("Invalid insuree number length %s, should be maximun %s") %
+                    (
+                        len(insuree_number),
+                        InsureeConfig.insuree_number_max_length
+                    )
                 }
             ]
-    config_modulo = InsureeConfig.get_insuree_number_modulo_root()
+    if InsureeConfig.insuree_number_min_length and len(insuree_number) < InsureeConfig.insuree_number_min_length:
+            return [
+                {
+                    "errorCode": InsureeConfig.validation_code_invalid_insuree_number_len,
+                    "message": _("Invalid insuree number length %s, should be minimum %s") %
+                    (
+                        len(insuree_number),
+                        InsureeConfig.insuree_number_min_length
+                    )
+                }
+            ]
+        
+    config_modulo = InsureeConfig.insuree_number_modulo_root
     if config_modulo:
         try:
             if config_modulo == 10:
@@ -107,6 +115,16 @@ def validate_insuree_number(insuree_number, insuree_uuid=None):
             logger.exception("Failed insuree number validation", exc)
             return [{"errorCode": InsureeConfig.validation_code_invalid_insuree_number_exception,
                      "message": "Insuree number validation failed"}]
+    query = Insuree.objects.filter(
+        chf_id=insuree_number, validity_to__isnull=True)
+    insuree = query.first()
+    if insuree_uuid and insuree and uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
+        return [{
+            "errorCode": InsureeConfig.validation_code_taken_insuree_number,
+            "message": "Insuree number has to be unique, %s exists in system" % insuree_number
+        }]
+
+    
     return []
 
 
