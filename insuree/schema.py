@@ -59,6 +59,7 @@ class Query(graphene.ObjectType):
         parent_location=graphene.String(),
         parent_location_level=graphene.Int(),
         client_mutation_id=graphene.String(),
+        ignore_location=graphene.Boolean(),
         orderBy=graphene.List(of_type=graphene.String),
     )
     identification_types = graphene.List(IdentificationTypeGQLType)
