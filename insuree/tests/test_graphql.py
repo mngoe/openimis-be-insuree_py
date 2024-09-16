@@ -417,7 +417,7 @@ query GetInsureeInquire($chfId: String) {
       self.assertResponseNoErrors(response)
       
       
-    def test_validate_number_unvaliditiy_with_variables(self):
+    def test_validate_number_unvalidity_with_variables(self):
         response = self.query(
             '''
     query ($insuranceNumber: String!) {
