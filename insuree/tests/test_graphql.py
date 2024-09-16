@@ -417,7 +417,7 @@ query GetInsureeInquire($chfId: String) {
       self.assertResponseNoErrors(response)
       
       
-    def test_validate_number_validditiy_with_variables(self):
+    def test_validate_number_unvaliditiy_with_variables(self):
         response = self.query(
             '''
     query ($insuranceNumber: String!) {
@@ -435,3 +435,29 @@ query GetInsureeInquire($chfId: String) {
 
         # This validates the status code and if you get errors
         self.assertResponseNoErrors(response)
+        self.assertFalse(content['data']['insureeNumberValidity']['isValid'])
+        
+
+    def test_validate_number_validitiy_with_variables(self):
+        with self.settings(
+                INSUREE_NUMBER_VALIDATOR=None,
+                INSUREE_NUMBER_LENGTH=9,
+                INSUREE_NUMBER_MODULE_ROOT=None):
+            response = self.query(
+              '''
+              query ($insuranceNumber: String!) {
+                insureeNumberValidity(insureeNumber: $insuranceNumber) {
+                  isValid
+                  errorCode
+                  errorMessage
+                }
+              }
+              ''',
+              headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
+              variables={"insuranceNumber": "070707070"})
+
+            content = json.loads(response.content)
+
+            # This validates the status code and if you get errors
+            self.assertResponseNoErrors(response)
+            self.assertTrue(content['data']['insureeNumberValidity']['isValid'])

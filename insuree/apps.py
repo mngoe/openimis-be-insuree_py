@@ -26,7 +26,7 @@ DEFAULT_CFG = {
     "renewal_photo_age_child": 12,  # age (in months) of a picture due for renewal for children
     "insuree_number_validator": None,  # Insuree number *function* that validates the insuree number for example
                                        # 'msystems.utils.is_valid_resident_identifier'
-    "insuree_number_length": 50,  # Insuree number length to validate
+    "insuree_number_length": 9,  # Insuree number length to validate
     "insuree_number_modulo_root": None,  # modulo base for checksum on last digit, requires length to be set too
     "validation_code_taken_insuree_number": 1,
     "validation_code_no_insuree_number": 2,
@@ -86,13 +86,23 @@ class InsureeConfig(AppConfig):
         cfg = ModuleConfiguration.get_or_default(MODULE_NAME, DEFAULT_CFG)
         self.__load_config(cfg)
         self._configure_photo_root(cfg)
+        self.reset_validation_settings()
 
 
     @classmethod
     def reset_validation_settings(cls):
-        cls.insuree_number_validator = cls.__get_from_settings_or_default("INSUREE_NUMBER_VALIDATOR")
-        cls.insuree_number_length = cls.__get_from_settings_or_default("INSUREE_NUMBER_LENGTH")
-        cls.insuree_number_modulo_root = cls.__get_from_settings_or_default("INSUREE_NUMBER_MODULE_ROOT")
+        cls.insuree_number_validator = cls.__get_from_settings_or_default(
+            "INSUREE_NUMBER_VALIDATOR", 
+            cls.insuree_number_validator
+        )
+        cls.insuree_number_length = cls.__get_from_settings_or_default(
+            "INSUREE_NUMBER_LENGTH",
+            cls.insuree_number_length
+        )
+        cls.insuree_number_modulo_root = cls.__get_from_settings_or_default(
+            "INSUREE_NUMBER_MODULE_ROOT",
+            cls.insuree_number_modulo_root
+        )
     # Getting these at runtime for easier testing
     @classmethod
     def get_insuree_number_validator(cls):
