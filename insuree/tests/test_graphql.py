@@ -418,11 +418,11 @@ query GetInsureeInquire($chfId: String) {
       
       
     def test_validate_number_unvalidity_with_variables(self):
-        with self.settings(
-            INSUREE_NUMBER_VALIDATOR=None,
-            INSUREE_NUMBER_LENGTH=9,
-            INSUREE_NUMBER_MODULE_ROOT=None):
-            InsureeConfig.reset_validation_settings()
+            InsureeConfig. insuree_number_validator = None
+            InsureeConfig.insuree_number_max_length = 9
+            InsureeConfig.insuree_number_min_length = 9
+            InsureeConfig.insuree_number_modulo_root = None
+            
             response = self.query(
                 '''
         query ($insuranceNumber: String!) {
@@ -444,11 +444,10 @@ query GetInsureeInquire($chfId: String) {
             
 
     def test_validate_number_validity_with_variables(self):
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=9,
-                INSUREE_NUMBER_MODULE_ROOT=None):
-            InsureeConfig.reset_validation_settings()
+            InsureeConfig. insuree_number_validator = None
+            InsureeConfig.insuree_number_max_length = 9
+            InsureeConfig.insuree_number_min_length = 9
+            InsureeConfig.insuree_number_modulo_root = None
             response = self.query(
               '''
               query ($insuranceNumber: String!) {

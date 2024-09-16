@@ -83,35 +83,12 @@ class InsureeConfig(AppConfig):
             if hasattr(InsureeConfig, field):
                 setattr(InsureeConfig, field, cfg[field])
 
+
     def ready(self):
         from core.models import ModuleConfiguration
         cfg = ModuleConfiguration.get_or_default(MODULE_NAME, DEFAULT_CFG)
         self.__load_config(cfg)
         self._configure_photo_root(cfg)
-        self.reset_validation_settings()
-
-
-    @classmethod
-    def reset_validation_settings(cls):
-        cls.insuree_number_validator = cls.__get_from_settings_or_default(
-            "INSUREE_NUMBER_VALIDATOR", 
-            DEFAULT_CFG['insuree_number_validator']
-        )
-        value = cls.__get_from_settings_or_default(
-            "INSUREE_NUMBER_LENGTH",
-        )
-        if value:
-            cls.insuree_number_max_length = int(value)
-            cls.insuree_number_min_length = int(value)
-        else:
-            cls.insuree_number_max_length = DEFAULT_CFG['insuree_number_max_length']
-            cls.insuree_number_min_length = DEFAULT_CFG['insuree_number_min_length']
-            
-        value = cls.__get_from_settings_or_default(
-            "INSUREE_NUMBER_MODULE_ROOT"
-        )
-        cls.insuree_number_modulo_root = int(value) if value else DEFAULT_CFG['insuree_number_modulo_root']
-
 
     def set_dataloaders(self, dataloaders):
         from .dataloaders import InsureeLoader, FamilyLoader
