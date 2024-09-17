@@ -35,9 +35,10 @@ class ReportAPITests( APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
     def test_single_insuree_family_overview_report(self):
-        headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
-        response = self.client.get(self.IFO_URL, format='json', **headers)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        with self.settings(ROW_SECURITY=True):
+            headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
+            response = self.client.get(self.IFO_URL, format='json', **headers)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
         
     def test_single_insuree_missing_photo_report(self):
         if not connection.vendor == 'postgresql':
