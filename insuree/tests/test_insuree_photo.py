@@ -99,9 +99,10 @@ class InsureePhotoTest(openIMISGraphQLTestCase):
 
 
     def test_add_photo_save_files(self):
-        self.__call_photo_mutation()
+        uuid_photo = uuid.uuid4()
+        self.__call_photo_mutation(photo_uuid=uuid_photo)
         self.assertEqual(self.insuree.photo.filename,
-                         str(self.test_photo_uuid))
+                         str(uuid_photo))
 
 
     def test_pull_photo_file_path(self):
@@ -127,7 +128,7 @@ class InsureePhotoTest(openIMISGraphQLTestCase):
 
     def __update_photo_mutation(self, photo, photo_uuid=None):
         if photo_uuid:
-            uuid_insert = f'uuid: "{self.test_photo_uuid}"'
+            uuid_insert = f'uuid: "{photo_uuid}"'
         else:
             uuid_insert = ''
         return f'''mutation

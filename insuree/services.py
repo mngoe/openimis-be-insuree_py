@@ -174,10 +174,13 @@ def handle_insuree_photo(user, now, insuree, data):
     data['insuree_id'] = insuree.id
     photo_bin = data.get('photo', None)
     # no photo changes
-    if 'uuid' in data and data['uuid'] == existing_insuree_photo.uuid:
+    if (
+        'uuid' in data and existing_insuree_photo and
+        uuid.UUID(data['uuid']) == uuid.UUID(existing_insuree_photo.uuid)
+    ):
         existing_insuree_photo_bin = load_photo_file(
-            existing_insuree_photo.file_dir,
-            existing_insuree_photo.file_name
+            existing_insuree_photo.folder,
+            existing_insuree_photo.filename
         )
         if photo_bin == existing_insuree_photo_bin: 
             return existing_insuree_photo
