@@ -50,6 +50,8 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         cls.admin_dist_token = get_token(cls.admin_dist_user, DummyContext(user=cls.admin_dist_user))
         cls.photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
 
+        cls.photo_base64_2 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbrAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
+
     def test_query_insuree_number_validity(self):
         response = self.query(
             '''
@@ -197,7 +199,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
 
     # This validates the status code and if you get errors
       self.assertResponseNoErrors(response)
-
+      
     def test_create_insuree(self):
       muuid = 'ffa465c5-6807-4de0-847e-202b7f42122b'
       response = self.query(f'''
@@ -240,6 +242,8 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       
       
     def test_create_family(self):
+      hear_number = generate_random_insuree_number()
+
       muuid='50f8f2c9-7685-4cd5-a7d8-b1fa78d46470'
       fuuid='50f8f2c9-7685-4cd5-a770-b1fa34d46470'
       response = self.query(f'''
@@ -249,7 +253,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Create Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "{generate_random_insuree_number()}"
+    chfId: "{hear_number}"
     lastName: "test"
     otherNames: "create family"
     genderId: "M"
@@ -293,7 +297,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Update Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "{generate_random_insuree_number()}"
+    chfId: "{hear_number}"
     uuid: "50f8f2c9-7685-4cd5-a778-b1fa78d46470"
     lastName: "test"
     otherNames: "create family"
@@ -303,7 +307,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
     photo:{{
     officerId: 1
     date: "2023-12-15"
-    photo: "{self.photo_base64}"
+    photo: "{self.photo_base64_2}"
 
   }}
     cardIssued:false
