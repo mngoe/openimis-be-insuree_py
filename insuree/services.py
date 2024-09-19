@@ -356,6 +356,7 @@ class InsureeService:
                 current_policy = InsureePolicy(**current_policy_dict)
                 current_policy.save()
 
+
     def _create_or_update(self, insuree, photo_data=None, add_on_existing_policy=False):
         validate_insuree(insuree)
         if insuree.id:
@@ -396,7 +397,24 @@ class InsureeService:
                     'message': _("insuree.mutation.failed_to_remove_insuree") % {'chfid': insuree.chfid},
                     'detail': insuree.uuid}]
             }
-
+            
+    def change_family(self, insuree, family, user_audit_id=None):
+        if insuree.family != family:
+            if (
+                insuree.family and
+                insuree.family.head_insuree == insuree
+            ):
+                raise ValueError(F"Insuree {insuree} already assigned as head to a family")
+            if user_audit_id:
+                insuree.save_history()
+            insuree.family = family
+            if user_audit_id:
+                insuree.user_audit_id = user_audit_id
+                insuree.save()
+            return True
+        return False
+        
+        
     @register_service_signal('insuree_service.delete')
     def set_deleted(self, insuree):
         try:
