@@ -7,6 +7,7 @@ from core.models import User
 from django.conf import settings
 from django.db import connection
 
+from unittest.mock import patch, PropertyMock
 
 @dataclass
 class DummyContext:
@@ -33,11 +34,14 @@ class ReportAPITests( APITestCase):
         headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
         response = self.client.get(self.EFO_URL, format='json', **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
     def test_single_insuree_family_overview_report(self):
-        headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
-        response = self.client.get(self.IFO_URL, format='json', **headers)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        with patch('core.models.InteractiveUser.is_imis_admin', new_callable=PropertyMock) as mock_is_imis_admin:
+            mock_is_imis_admin.return_value = False
+            with self.settings(ROW_SECURITY=True):
+                headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
+                response = self.client.get(self.IFO_URL, format='json', **headers)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
         
     def test_single_insuree_missing_photo_report(self):
         if not connection.vendor == 'postgresql':

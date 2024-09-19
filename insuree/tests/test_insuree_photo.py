@@ -13,18 +13,22 @@ from insuree.models import Insuree
 from insuree.test_helpers import create_test_insuree
 from location.models import UserDistrict
 from core.services import create_or_update_interactive_user, create_or_update_core_user
-
+from core.models.openimis_graphql_test_case import openIMISGraphQLTestCase
 from insuree.services import validate_insuree_number
 from unittest.mock import ANY
 from django.conf import settings
+from graphql_jwt.shortcuts import get_token
 
 
-class InsureePhotoTest(TestCase):
+class InsureePhotoTest(openIMISGraphQLTestCase):
 
     test_user = None
     _TEST_USER_NAME = None
     test_user_PASSWORD = None
     _TEST_DATA_USER = None
+    schema = Schema(
+            query=insuree_schema.Query,
+    )
 
     photo_base64 = None
     test_photo_path, test_photo_uuid = None, None
@@ -45,16 +49,19 @@ class InsureePhotoTest(TestCase):
             "language": "en",
             "roles": [4],
         }
-        cls.test_photo_path=InsureeConfig.insuree_photos_root_path
+        cls.test_photo_path = InsureeConfig.insuree_photos_root_path
         cls.test_photo_uuid = str(uuid.uuid4())
         cls.photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
+        cls.photo_base64_2 = "iVBORw03GgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
         cls.test_user = cls.__create_user_interactive_core()
         cls.insuree = create_test_insuree()
+        cls.test_user_token = get_token(cls.test_user, cls.BaseTestContext(user=cls.test_user))
+
         #Add the disctict on the user
         UserDistrict.objects.create(
-            user = cls.test_user.i_user,
-            location = cls.insuree.family.location.parent.parent,
-            audit_user_id = -1
+            user=cls.test_user.i_user,
+            location=cls.insuree.family.location.parent.parent,
+            audit_user_id=-1
         )
         cls.test_user.i_user
         cls.row_sec = settings.ROW_SECURITY
@@ -76,9 +83,11 @@ class InsureePhotoTest(TestCase):
         ##insuree_schema.bind_signals()
 
     def test_add_photo_save_db(self):
-        result = self.__call_photo_mutation()
+        result = self.__call_photo_mutation(photo_uuid=self.test_photo_uuid)
         self.assertEqual(self.insuree.photo.photo, self.photo_base64)
-
+        result = self.__call_photo_mutation(self.photo_base64_2, photo_uuid=self.test_photo_uuid)
+        self.get_mutation_result(result['data']['updateInsuree']['clientMutationId'], self.test_user_token)
+        
     def test_pull_photo_db(self):
         self.__call_photo_mutation()
         query_result = self.__call_photo_query()
@@ -90,9 +99,10 @@ class InsureePhotoTest(TestCase):
 
 
     def test_add_photo_save_files(self):
-        self.__call_photo_mutation()
+        uuid_photo = uuid.uuid4()
+        self.__call_photo_mutation(photo_uuid=uuid_photo)
         self.assertEqual(self.insuree.photo.filename,
-                         str(self.test_photo_uuid))
+                         str(uuid_photo))
 
 
     def test_pull_photo_file_path(self):
@@ -102,8 +112,10 @@ class InsureePhotoTest(TestCase):
         self.assertEqual(gql_photo['photo'], self.photo_base64)
         
 
-    def __call_photo_mutation(self):
-        mutation = self.__update_photo_mutation()
+    def __call_photo_mutation(self, photo=None, photo_uuid=None):
+        if not photo:
+            photo = self.photo_base64
+        mutation = self.__update_photo_mutation(photo, photo_uuid=photo_uuid)
         context = self.BaseTestContext(self.test_user)
         result = self.insuree_client.execute(mutation, context=context)
         self.insuree = Insuree.objects.get(pk=self.insuree.pk)
@@ -114,8 +126,11 @@ class InsureePhotoTest(TestCase):
         context = self.BaseTestContext(self.test_user)
         return self.insuree_client.execute(query, context=context)
 
-    def __update_photo_mutation(self):
-        self.test_photo_uuid = str(uuid.uuid4()).lower()
+    def __update_photo_mutation(self, photo, photo_uuid=None):
+        if photo_uuid:
+            uuid_insert = f'uuid: "{photo_uuid}"'
+        else:
+            uuid_insert = ''
         return f'''mutation
             {{
                 updateInsuree(input: {{
@@ -131,10 +146,10 @@ class InsureePhotoTest(TestCase):
                         marital: "M"
                         status: "AC"
                         photo:{{
-                            uuid: "{self.test_photo_uuid}"
+                            {uuid_insert}
                             officerId: {self.test_user.i_user_id}
                             date: "2022-06-21"
-                            photo: "{self.photo_base64}"
+                            photo: "{photo}"
                             }}
                         cardIssued:false
                         familyId: {self.insuree.family.id}
