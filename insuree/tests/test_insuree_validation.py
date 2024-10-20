@@ -14,51 +14,57 @@ def fail1(x):
 class InsureeValidationTest(TestCase):
     def test_validator(self):
 
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR='insuree.tests.test_insuree_validation.fail1',
-                INSUREE_NUMBER_LENGTH=None,
-                INSUREE_NUMBER_MODULE_ROOT=None):
-            self.assertEqual(validate_insuree_number(None), [])
-            self.assertEqual(validate_insuree_number("valid"), [])
-            self.assertEqual(validate_insuree_number("fail1"), ["fail1"])
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=None,
-                INSUREE_NUMBER_MODULE_ROOT=None):
-            self.assertEqual(validate_insuree_number(None), [])
-            self.assertEqual(validate_insuree_number("valid"), [])
-            self.assertEqual(validate_insuree_number("fail1"), [])
+        InsureeConfig.insuree_number_validator = 'insuree.tests.test_insuree_validation.fail1'
+        InsureeConfig.insuree_number_max_length = None
+        InsureeConfig.insuree_number_min_length = None
+        InsureeConfig.insuree_number_modulo_root = None
+        
+        self.assertEqual(validate_insuree_number(None), [])
+        self.assertEqual(validate_insuree_number("valid"), [])
+        self.assertEqual(validate_insuree_number("fail1"), ["fail1"])
+        InsureeConfig. insuree_number_validator = None
+        InsureeConfig.insuree_number_max_length = None
+        InsureeConfig.insuree_number_min_length = None
+        InsureeConfig.insuree_number_modulo_root = None
+        
+        self.assertEqual(validate_insuree_number(None), [])
+        self.assertEqual(validate_insuree_number("valid"), [])
+        self.assertEqual(validate_insuree_number("fail1"), [])
 
     def test_len(self):
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=5,
-                INSUREE_NUMBER_MODULE_ROOT=None):
-            self.assertEqual(len(validate_insuree_number(None)), 1)
-            self.assertEqual(len(validate_insuree_number("")), 1)
-            self.assertEqual(len(validate_insuree_number("foo")), 1)
-            self.assertEqual(len(validate_insuree_number("12345")), 0)
-            self.assertEqual(len(validate_insuree_number("1234567")), 1)
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=7,
-                INSUREE_NUMBER_MODULE_ROOT=None):
-            self.assertEqual(len(validate_insuree_number("12345")), 1)
-            self.assertEqual(len(validate_insuree_number("1234567")), 0)
+        InsureeConfig. insuree_number_validator = None
+        InsureeConfig.insuree_number_max_length = 5
+        InsureeConfig.insuree_number_min_length = 5
+        InsureeConfig.insuree_number_modulo_root = None
+        
+        self.assertEqual(len(validate_insuree_number(None)), 1)
+        self.assertEqual(len(validate_insuree_number("")), 1)
+        self.assertEqual(len(validate_insuree_number("foo")), 1)
+        self.assertEqual(len(validate_insuree_number("12345")), 0)
+        self.assertEqual(len(validate_insuree_number("1234567")), 1)
+        InsureeConfig. insuree_number_validator = None
+        InsureeConfig.insuree_number_max_length = 7
+        InsureeConfig.insuree_number_min_length = 7
+        InsureeConfig.insuree_number_modulo_root = None
+        
+        self.assertEqual(len(validate_insuree_number("12345")), 1)
+        self.assertEqual(len(validate_insuree_number("1234567")), 0)
 
     def test_mod(self):
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=5,
-                INSUREE_NUMBER_MODULE_ROOT=7):
-            self.assertEqual(len(validate_insuree_number(None)), 1)
-            self.assertEqual(len(validate_insuree_number("12342")), 0)
-            self.assertEqual(len(validate_insuree_number("12345")), 1)
-            self.assertEqual(len(validate_insuree_number("1234567")), 1)
-        with self.settings(
-                INSUREE_NUMBER_VALIDATOR=None,
-                INSUREE_NUMBER_LENGTH=7,
-                INSUREE_NUMBER_MODULE_ROOT=5):
-            self.assertEqual(len(validate_insuree_number("12345")), 1)
-            self.assertEqual(len(validate_insuree_number("1234561")), 0)
-            self.assertEqual(len(validate_insuree_number("1234560")), 1)
+        InsureeConfig. insuree_number_validator = None
+        InsureeConfig.insuree_number_max_length = 5
+        InsureeConfig.insuree_number_min_length = 5
+        InsureeConfig.insuree_number_modulo_root = 7
+        
+        self.assertEqual(len(validate_insuree_number(None)), 1)
+        self.assertEqual(len(validate_insuree_number("12342")), 0)
+        self.assertEqual(len(validate_insuree_number("12345")), 1)
+        self.assertEqual(len(validate_insuree_number("1234567")), 1)
+        InsureeConfig. insuree_number_validator = None
+        InsureeConfig.insuree_number_max_length = 7
+        InsureeConfig.insuree_number_min_length = 7
+        InsureeConfig.insuree_number_modulo_root = 5
+        
+        self.assertEqual(len(validate_insuree_number("12345")), 1)
+        self.assertEqual(len(validate_insuree_number("1234561")), 0)
+        self.assertEqual(len(validate_insuree_number("1234560")), 1)

@@ -48,7 +48,7 @@ def create_insuree_renewal_detail(policy_renewal):
 
 
 def custom_insuree_number_validation(insuree_number):
-    function_string = InsureeConfig.get_insuree_number_validator()
+    function_string = InsureeConfig.insuree_number_validator
     try:
         mod, name = function_string.rsplit('.', 1)
         module = import_module(mod)
@@ -64,34 +64,43 @@ def custom_insuree_number_validation(insuree_number):
 
 
 def validate_insuree_number(insuree_number, insuree_uuid=None):
-    query = Insuree.objects.filter(
-        chf_id=insuree_number, validity_to__isnull=True)
-    insuree = query.first()
-    if insuree_uuid and insuree and uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
-        return [{"errorCode": InsureeConfig.validation_code_taken_insuree_number,
-                 "message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
+    insuree_number = str(insuree_number)
 
-    if InsureeConfig.get_insuree_number_validator():
+    if InsureeConfig.insuree_number_validator:
         return custom_insuree_number_validation(insuree_number)
-    if InsureeConfig.get_insuree_number_length():
+    if InsureeConfig.insuree_number_max_length:
         if not insuree_number:
             return [
                 {
                     "errorCode": InsureeConfig.validation_code_no_insuree_number,
-                    "message": "Invalid insuree number (empty), should be %s" %
-                               (InsureeConfig.get_insuree_number_length(),)
+                    "message": _("Invalid insuree number (empty), should be %s") %
+                    (InsureeConfig.insuree_number_max_length,)
                 }
             ]
-        if len(insuree_number) != InsureeConfig.get_insuree_number_length():
+        if len(insuree_number) > InsureeConfig.insuree_number_max_length:
             return [
                 {
                     "errorCode": InsureeConfig.validation_code_invalid_insuree_number_len,
-                    "message": "Invalid insuree number length %s, should be %s" %
-                               (len(insuree_number),
-                                InsureeConfig.get_insuree_number_length())
+                    "message": _("Invalid insuree number length %s, should be maximun %s") %
+                    (
+                        len(insuree_number),
+                        InsureeConfig.insuree_number_max_length
+                    )
                 }
             ]
-    config_modulo = InsureeConfig.get_insuree_number_modulo_root()
+    if InsureeConfig.insuree_number_min_length and len(insuree_number) < InsureeConfig.insuree_number_min_length:
+            return [
+                {
+                    "errorCode": InsureeConfig.validation_code_invalid_insuree_number_len,
+                    "message": _("Invalid insuree number length %s, should be minimum %s") %
+                    (
+                        len(insuree_number),
+                        InsureeConfig.insuree_number_min_length
+                    )
+                }
+            ]
+        
+    config_modulo = InsureeConfig.insuree_number_modulo_root
     if config_modulo:
         try:
             if config_modulo == 10:
@@ -106,6 +115,16 @@ def validate_insuree_number(insuree_number, insuree_uuid=None):
             logger.exception("Failed insuree number validation", exc)
             return [{"errorCode": InsureeConfig.validation_code_invalid_insuree_number_exception,
                      "message": "Insuree number validation failed"}]
+    query = Insuree.objects.filter(
+        chf_id=insuree_number, validity_to__isnull=True)
+    insuree = query.first()
+    if insuree_uuid and insuree and uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
+        return [{
+            "errorCode": InsureeConfig.validation_code_taken_insuree_number,
+            "message": "Insuree number has to be unique, %s exists in system" % insuree_number
+        }]
+
+    
     return []
 
 
@@ -171,9 +190,25 @@ def handle_insuree_photo(user, now, insuree, data):
     data['audit_user_id'] = user.id_for_audit
     data['validity_from'] = now
     data['insuree_id'] = insuree.id
-    if 'uuid' not in data or (existing_insuree_photo and data['uuid'] == existing_insuree_photo.uuid):
-        data['uuid'] = str(uuid.uuid4())
     photo_bin = data.get('photo', None)
+    # no photo changes
+    if (
+        'uuid' in data and existing_insuree_photo and
+        uuid.UUID(data['uuid']) == uuid.UUID(existing_insuree_photo.uuid)
+    ):
+        existing_insuree_photo_bin = load_photo_file(
+            existing_insuree_photo.folder,
+            existing_insuree_photo.filename
+        )
+        if photo_bin == existing_insuree_photo_bin: 
+            return existing_insuree_photo
+        else:
+            # we ignore the uuid, FE must have messup
+            data['uuid'] = str(uuid.uuid4())
+    if 'uuid' not in data:
+        data['uuid'] = str(uuid.uuid4())
+    
+    
     if photo_bin and InsureeConfig.insuree_photos_root_path \
             and (existing_insuree_photo is None or existing_insuree_photo.photo != photo_bin):
         (file_dir, file_name) = create_file(now, insuree.id, photo_bin, data['uuid'])
@@ -215,11 +250,9 @@ def _create_dir(file_dir):
         .mkdir(parents=True, exist_ok=True)
 
 
-def create_file(date, insuree_id, photo_bin, name):
+def create_file(date, insuree_id, photo_bin, file_name):
     file_dir = path.join(str(date.year), str(date.month),
                          str(date.day), str(insuree_id))
-    file_name = name
-
     _create_dir(file_dir)
     with open(_photo_dir(file_dir, file_name), "xb") as f:
         f.write(base64.b64decode(photo_bin))
@@ -287,7 +320,7 @@ class InsureeService:
         self.user = user
 
     @register_service_signal('insuree_service.create_or_update')
-    def create_or_update(self, data):
+    def create_or_update(self, data, create_only=False):
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
@@ -298,25 +331,28 @@ class InsureeService:
             raise ValidationError(_("mutation.insuree.wrong_status"))
         if InsureeConfig.is_insuree_photo_required and photo_data is None:
             raise ValidationError(_("mutation.insuree.no_required_photo"))
+        insuree = None
+        if "uuid" in data:
+            insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
+        elif 'chf_id' in data and not create_only:
+            insuree = Insuree.objects.filter(chf_id=data["chf_id"], *filter_validity()).first()
         if status in [InsureeStatus.INACTIVE, InsureeStatus.DEAD]:
             status_reason = InsureeStatusReason.objects.get(code=data.get('status_reason', None),
                                                             validity_to__isnull=True)
             if status_reason is None or status_reason.status_type != status:
                 raise ValidationError(_("mutation.insuree.wrong_status"))
             data['status_reason'] = status_reason
-            if "uuid" in data:
-                insuree = Insuree.objects.get(uuid=data["uuid"])
+            if insuree:
                 self.disable_policies_of_insuree(insuree=insuree, status_date=data['status_date'])
-        elif "uuid" in data:
-            insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
-            if not insuree:
-                insuree = Insuree.objects.create(**data)
-            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             raise ValidationError("mutation.insuree.fsp_required")
+        if not insuree:
+            insuree = Insuree(**data)
 
-        insuree = Insuree(**data)
-        return self._create_or_update(insuree, photo_data)
+        return self._create_or_update(
+            insuree, photo_data,
+            add_on_existing_policy=data.get('add_on_existing_policy', False)
+        )
 
     def disable_policies_of_insuree(self, insuree, status_date):
         policies_to_cancel = InsureePolicy.objects.filter(insuree=insuree.id, validity_to__isnull=True).all()
@@ -324,7 +360,7 @@ class InsureeService:
             policy.expiry_date = status_date
             policy.save()
 
-    def activate_policies_of_insuree(self, insuree, audit_user_id):
+    def activate_policies_of_insuree(self, insuree):
         from core import datetime
         now = datetime.date.today()
         from policy.models import Policy
@@ -332,13 +368,14 @@ class InsureeService:
         for policy in policies_to_activate:
             if policy.expiry_date >= now:
                 current_policy_dict = {"effective_date": now, "expiry_date": policy.expiry_date,
-                                       "audit_user_id": audit_user_id, "offline": policy.offline,
+                                       "audit_user_id": self.user.audit_user_id, "offline": policy.offline,
                                        "start_date": policy.start_date, "policy": policy, "insuree": insuree,
                                        "enrollment_date": policy.enroll_date}
                 current_policy = InsureePolicy(**current_policy_dict)
                 current_policy.save()
 
-    def _create_or_update(self, insuree, photo_data=None):
+
+    def _create_or_update(self, insuree, photo_data=None, add_on_existing_policy=False):
         validate_insuree(insuree)
         if insuree.id:
             filters = Q(id=insuree.id)
@@ -353,13 +390,15 @@ class InsureeService:
         if existing_insuree:
             existing_insuree.save_history()
             insuree.id = existing_insuree.id
-        insuree.save()
+
         if photo_data:
             photo = handle_insuree_photo(self.user, insuree.validity_from, insuree, photo_data)
             if photo:
                 insuree.photo = photo
                 insuree.photo_date = photo.date
-                insuree.save()
+        insuree.save()
+        if insuree and add_on_existing_policy:
+            self.activate_policies_of_insuree(insuree=insuree)
         return insuree
 
     def remove(self, insuree):
@@ -376,7 +415,24 @@ class InsureeService:
                     'message': _("insuree.mutation.failed_to_remove_insuree") % {'chfid': insuree.chfid},
                     'detail': insuree.uuid}]
             }
-
+            
+    def change_family(self, insuree, family, user_audit_id=None):
+        if insuree.family != family:
+            if (
+                insuree.family and
+                insuree.family.head_insuree == insuree
+            ):
+                raise ValueError(F"Insuree {insuree} already assigned as head to a family")
+            if user_audit_id:
+                insuree.save_history()
+            insuree.family = family
+            if user_audit_id:
+                insuree.user_audit_id = user_audit_id
+                insuree.save()
+            return True
+        return False
+        
+        
     @register_service_signal('insuree_service.delete')
     def set_deleted(self, insuree):
         try:
