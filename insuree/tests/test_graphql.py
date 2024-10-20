@@ -13,11 +13,11 @@ from graphql_jwt.shortcuts import get_token
 from location.models import Location
 from location.test_helpers import create_test_location, assign_user_districts
 from rest_framework import status
-from insuree.test_helpers import create_test_insuree
+from insuree.test_helpers import create_test_insuree, generate_random_insuree_number
 from location.test_helpers import create_test_location, create_test_health_facility, create_test_village
 from insuree.models import Family
 
-
+from insuree.apps import InsureeConfig
 # from openIMIS import schema
 
 
@@ -49,6 +49,8 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         assign_user_districts(cls.admin_dist_user, ["R1D1", "R2D1", "R2D2", "R2D1", cls.test_village.parent.parent.code])
         cls.admin_dist_token = get_token(cls.admin_dist_user, DummyContext(user=cls.admin_dist_user))
         cls.photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
+
+        cls.photo_base64_2 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbrAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
 
     def test_query_insuree_number_validity(self):
         response = self.query(
@@ -197,7 +199,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
 
     # This validates the status code and if you get errors
       self.assertResponseNoErrors(response)
-
+      
     def test_create_insuree(self):
       muuid = 'ffa465c5-6807-4de0-847e-202b7f42122b'
       response = self.query(f'''
@@ -205,9 +207,9 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       createInsuree(
         input: {{
           clientMutationId: "{muuid}"
-          clientMutationLabel: "Create insuree - 12343456234"
+          clientMutationLabel: "Create insuree "
           
-          chfId: "12343456234"
+          chfId: "{generate_random_insuree_number()}"
     lastName: "test"
     otherNames: "create insuree"
     genderId: "M"
@@ -240,6 +242,8 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       
       
     def test_create_family(self):
+      hear_number = generate_random_insuree_number()
+
       muuid='50f8f2c9-7685-4cd5-a7d8-b1fa78d46470'
       fuuid='50f8f2c9-7685-4cd5-a770-b1fa34d46470'
       response = self.query(f'''
@@ -249,7 +253,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Create Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "4455667788"
+    chfId: "{hear_number}"
     lastName: "test"
     otherNames: "create family"
     genderId: "M"
@@ -293,7 +297,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
           clientMutationId: "{muuid}"
           clientMutationLabel: "Update Family - test create family (445566778899)"
           headInsuree: {{
-    chfId: "4455667788"
+    chfId: "{hear_number}"
     uuid: "50f8f2c9-7685-4cd5-a778-b1fa78d46470"
     lastName: "test"
     otherNames: "create family"
@@ -303,7 +307,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
     photo:{{
     officerId: 1
     date: "2023-12-15"
-    photo: "{self.photo_base64}"
+    photo: "{self.photo_base64_2}"
 
   }}
     cardIssued:false
@@ -417,21 +421,52 @@ query GetInsureeInquire($chfId: String) {
       self.assertResponseNoErrors(response)
       
       
-    def test_validate_number_validditiy_with_variables(self):
-        response = self.query(
-            '''
-    query ($insuranceNumber: String!) {
-      insureeNumberValidity(insureeNumber: $insuranceNumber) {
-        isValid
-        errorCode
-        errorMessage
-      }
-    }
-            ''',
-            headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
-            variables={"insuranceNumber": "070707070"}        )
+    def test_validate_number_unvalidity_with_variables(self):
+            InsureeConfig. insuree_number_validator = None
+            InsureeConfig.insuree_number_max_length = 9
+            InsureeConfig.insuree_number_min_length = 9
+            InsureeConfig.insuree_number_modulo_root = None
+            
+            response = self.query(
+                '''
+        query ($insuranceNumber: String!) {
+          insureeNumberValidity(insureeNumber: $insuranceNumber) {
+            isValid
+            errorCode
+            errorMessage
+          }
+        }
+                ''',
+                headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
+                variables={"insuranceNumber": "07070"}        )
 
-        content = json.loads(response.content)
+            content = json.loads(response.content)
 
-        # This validates the status code and if you get errors
-        self.assertResponseNoErrors(response)
+            # This validates the status code and if you get errors
+            self.assertResponseNoErrors(response)
+            self.assertFalse(content['data']['insureeNumberValidity']['isValid'])
+            
+
+    def test_validate_number_validity_with_variables(self):
+            InsureeConfig. insuree_number_validator = None
+            InsureeConfig.insuree_number_max_length = 9
+            InsureeConfig.insuree_number_min_length = 9
+            InsureeConfig.insuree_number_modulo_root = None
+            response = self.query(
+              '''
+              query ($insuranceNumber: String!) {
+                insureeNumberValidity(insureeNumber: $insuranceNumber) {
+                  isValid
+                  errorCode
+                  errorMessage
+                }
+              }
+              ''',
+              headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"},
+              variables={"insuranceNumber": "070707070"})
+
+            content = json.loads(response.content)
+
+            # This validates the status code and if you get errors
+            self.assertResponseNoErrors(response)
+            self.assertTrue(content['data']['insureeNumberValidity']['isValid'])

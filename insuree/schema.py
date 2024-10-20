@@ -1,3 +1,5 @@
+import re
+
 import graphene
 
 from claim.apps import ClaimConfig
@@ -12,6 +14,7 @@ import graphene_django_optimizer as gql_optimizer
 from location.models import Location, LocationManager
 
 from insuree.apps import InsureeConfig
+from insuree.services import validate_insuree_number
 from .models import FamilyMutation, InsureeMutation
 from django.utils.translation import gettext as _
 from location.apps import LocationConfig
@@ -162,7 +165,11 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         filters = []
         additional_filter = kwargs.get('additional_filters', None)
         chf_id = kwargs.get('chf_id')
+        
         if chf_id is not None:
+            errors = validate_insuree_number(chf_id)
+            if errors:
+                return ValidationMessageGQLType(False, errors[0]['errorCode'], errors[0]['message'])
             filters.append(Q(chf_id=chf_id))
         if additional_filter:
             filters_from_signal = _insuree_insuree_additional_filters(
