@@ -9,6 +9,7 @@ from core.utils import filter_validity
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from django.dispatch import Signal
+from django.core.cache import cache
 from graphene_django.filter import DjangoFilterConnectionField
 import graphene_django_optimizer as gql_optimizer
 from location.models import Location, LocationManager
