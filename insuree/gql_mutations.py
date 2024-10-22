@@ -57,7 +57,6 @@ class InsureeBase:
     status = graphene.String(required=False)
     status_reason = graphene.String(required=False)
     status_date = graphene.Date(required=False)
-    poligamous = graphene.Boolean(required=False)
     coordinates = graphene.String(max_length=255, required=False)
     preferred_payment_method = graphene.String(max_length=50, required=False)
     income_level_id = graphene.Int(required=False)
@@ -91,7 +90,7 @@ class FamilyBase:
     json_ext = graphene.types.json.JSONString(required=False)
     family_level = graphene.String(max_length=1, required=False)
     parent_id = graphene.Int(required=False)
-    poligamous = graphene.Boolean(required=False)
+    polygamous = graphene.Boolean(required=False)
     coordinates = graphene.String(max_length=255, required=False)
     preferred_payment_method = graphene.String(max_length=50, required=False)
     income_level_id = graphene.Int(required=False)
@@ -356,7 +355,7 @@ class MoveFamilyToParentMutation(OpenIMISMutation):
                 errors.append({
                     'title': child_family_uuid,
                     'list': [{'message': _(
-                        "Impossible d'assigner la famille %(id)s à elle-même") % {'id': child_family_uuid}}]
+                        "family.validation.assign_self") % {'id': child_family_uuid}}]
                 })
                 continue
             family = Family.objects \
@@ -366,8 +365,8 @@ class MoveFamilyToParentMutation(OpenIMISMutation):
             if family is None:
                 errors += {
                     'title': family,
-                    'list': [{'message': (
-                        "La famille %(id)s n'existe pas") % {'id': child_family_uuid}}]
+                    'list': [{'message': _(
+                        "family.validation.not_exist") % {'id': child_family_uuid}}]
                 }
                 continue
             insuree_service = InsureeService(user)
@@ -412,7 +411,7 @@ class DeleteFamiliesFromParentMutation(OpenIMISMutation):
                 errors += {
                     'title': family,
                     'list': [{'message': (
-                        "La famille %(id)s n'existe pas") % {'id': child_family_uuid}}]
+                        "Family %(id)s does not exist") % {'id': child_family_uuid}}]
                 }
                 continue
             insuree_service = InsureeService(user)
