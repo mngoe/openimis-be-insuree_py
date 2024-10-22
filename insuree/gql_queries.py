@@ -46,9 +46,7 @@ class IncomeLevelsGQLType(DjangoObjectType):
         model = IncomeLevels
         interfaces = (graphene.relay.Node,)
         filter_fields = {
-            "id":["exact"],
-            "french_version":["exact", "istartswith", "icontains", "iexact"],
-            "english_version":["exact", "istartswith", "icontains", "iexact"]
+            "id":["exact"]
         }
         connection_class = ExtendedConnection
 

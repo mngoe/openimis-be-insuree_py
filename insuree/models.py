@@ -72,8 +72,8 @@ class FamilyType(models.Model):
 
 class IncomeLevels(models.Model):
     id  = models.AutoField(db_column='IncomeLevelID', primary_key=True)
-    french_version = models.CharField(db_column='FrenchVersion', max_length=200, blank=True, null=True)
-    english_version = models.CharField(db_column='EnglishVersion', max_length=200, blank=True, null=True)
+    first_language = models.CharField(db_column='FirstLanguage', max_length=200, blank=True, null=True)
+    second_language = models.CharField(db_column='SecondLanguage', max_length=200, blank=True, null=True)
     class Meta:
         managed = True
         db_table = 'tblIncomeLevels'
@@ -97,7 +97,23 @@ class FamilyLevels(models.TextChoices):
     ONE = "1", "1"
     TWO = "2", "2"
 
-class Family(core_models.VersionedModel, core_models.ExtendableModel):
+class BaseModel(models.Model):
+    coordinates = models.CharField(
+        db_column='Coordinates', max_length=255, blank=True, null=True)
+    preferred_payment_method = models.CharField(
+        db_column='PreferredPaymentMethod', max_length=50, blank=True, null=True)
+    income_level = models.ForeignKey(
+        IncomeLevels, models.DO_NOTHING, db_column='IncomeLevel', blank=True, null=True)
+    professional_situation = models.CharField(
+        db_column='ProfessionalSituation', max_length=255, blank=True, null=True)
+    bank_coordinates = models.CharField(
+        db_column='BankCoordinates', max_length=255, blank=True, null=True)
+    audit_user_id = models.IntegerField(db_column='AuditUserID')
+
+    class Meta:
+        abstract = True
+
+class Family(core_models.VersionedModel, core_models.ExtendableModel, BaseModel):
     id = models.AutoField(db_column='FamilyID', primary_key=True)
     uuid = models.CharField(db_column='FamilyUUID',
                             max_length=36, default=uuid.uuid4, unique=True)
@@ -123,24 +139,13 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
         ConfirmationType,
         models.DO_NOTHING, db_column='ConfirmationType', blank=True, null=True,
         related_name='families')
-    audit_user_id = models.IntegerField(db_column='AuditUserID')
     # rowid = models.TextField(db_column='RowID', blank=True, null=True)
     parent = models.ForeignKey(
         'Family', models.DO_NOTHING, db_column='ParentFamily', blank=True, null=True)
     family_level = models.CharField(db_column='FamilyLevel', choices=FamilyLevels.choices, max_length=1, default=FamilyLevels.ONE)
-    poligamous = models.BooleanField(
-        db_column='PoligamousFamily', blank=True, null=True)
-    coordinates = models.CharField(
-        db_column='Coordinates', max_length=255, blank=True, null=True)
-    preferred_payment_method = models.CharField(
-        db_column='PreferredPaymentMethod', max_length=50, blank=True, null=True)
-    income_level = models.ForeignKey(
-        IncomeLevels, models.DO_NOTHING, db_column='IncomeLevel', blank=True, null=True)
-    professional_situation = models.CharField(
-        db_column='ProfessionalSituation', max_length=255, blank=True, null=True)
-    bank_coordinates = models.CharField(
-        db_column='BankCoordinates', max_length=255, blank=True, null=True)
-
+    polygamous = models.BooleanField(
+        db_column='PolygamousFamily', blank=True, null=True)
+    
     def __str__(self):
         return str(self.head_insuree)
 
@@ -240,7 +245,7 @@ class InsureeStatusReason(core_models.VersionedModel):
         db_table = 'tblInsureeStatusReason'
 
 
-class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
+class Insuree(core_models.VersionedModel, core_models.ExtendableModel, BaseModel):
     id = models.AutoField(db_column='InsureeID', primary_key=True)
     uuid = models.CharField(db_column='InsureeUUID', max_length=36, default=uuid.uuid4, unique=True)
 
@@ -305,20 +310,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
     status_date = core.fields.DateField(db_column='status_date', null=True, blank=True)
     status_reason = models.ForeignKey(InsureeStatusReason, models.DO_NOTHING, db_column='StatusReason',
                                       blank=True, null=True, related_name='insurees')
-    audit_user_id = models.IntegerField(db_column='AuditUserID')
-    # row_id = models.BinaryField(db_column='RowID', blank=True, null=True)
-    poligamous = models.BooleanField(
-        db_column='PoligamousFamily', blank=True, null=True)
-    coordinates = models.CharField(
-        db_column='Coordinates', max_length=255, blank=True, null=True)
-    preferred_payment_method = models.CharField(
-        db_column='PreferredPaymentMethod', max_length=50, blank=True, null=True)
-    income_level = models.ForeignKey(
-        IncomeLevels, models.DO_NOTHING, db_column='IncomeLevel', blank=True, null=True)
-    professional_situation = models.CharField(
-        db_column='ProfessionalSituation', max_length=255, blank=True, null=True)
-    bank_coordinates = models.CharField(
-        db_column='BankCoordinates', max_length=255, blank=True, null=True)
+    # row_id = models.BinaryField(db_column='RowID', blank=True, null=True) 
 
     def is_head_of_family(self):
         return self.family and self.family.head_insuree == self

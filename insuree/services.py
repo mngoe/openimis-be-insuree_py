@@ -289,7 +289,6 @@ class InsureeService:
 
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data):
-        print("create_or_update 111 ", InsureeConfig.comores_features_enabled)
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
@@ -312,7 +311,7 @@ class InsureeService:
         elif "uuid" in data:
             insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
             if not insuree:
-                if InsureeConfig.comores_features_enabled:
+                if InsureeConfig.is_features_enabled:
                     min_num = 1
                     max_num = 99999
                     formatted_num = 0
@@ -323,8 +322,7 @@ class InsureeService:
                 insuree = Insuree.objects.create(**data)
             self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if "uuid" not in data:
-            if InsureeConfig.comores_features_enabled:
-                print("Auto genate CHFID")
+            if InsureeConfig.is_features_enabled:
                 min_num = 1
                 max_num = 99999
                 formatted_num = 0
@@ -359,10 +357,9 @@ class InsureeService:
                 current_policy.save()
 
     def _create_or_update(self, insuree, photo_data=None):
-        print("_create_or_update****")
-        if not InsureeConfig.comores_features_enabled:
+        if not InsureeConfig.is_features_enabled:
             if not insuree.chf_id:
-                raise Exception(f"Aucun CHFID renseigné pourtant le système n'a pas la configuration de Comores active")
+                raise Exception ("config.no_chfid")
         validate_insuree(insuree)
         if insuree.id:
             filters = Q(id=insuree.id)
@@ -378,9 +375,8 @@ class InsureeService:
             existing_insuree.save_history()
             insuree.id = existing_insuree.id
         else:
-            if InsureeConfig.comores_features_enabled:
+            if InsureeConfig.is_features_enabled:
                 if insuree.head != True:
-                    print("insuree.chf_id ", insuree.chf_id)
                     if not insuree.chf_id: #Si le CHFID n'a pas deja été généré on genere
                         # Si c'est le head insuree son chfid aura deja été généré grace au NIN de la famille
                         min_num = 1
@@ -470,7 +466,6 @@ class InsureePolicyService:
                     offline=False,
                     audit_user_id=self.user.i_user.id
                 )
-                print(ip.__dict__)
                 ip.save()
 
 
@@ -483,7 +478,7 @@ class FamilyService:
         
         if head_insuree_data:
             head_insuree_data["head"] = True
-            if InsureeConfig.comores_features_enabled:
+            if InsureeConfig.is_features_enabled:
                 min_num = 1
                 max_num = 99999
                 formatted_num = 0
