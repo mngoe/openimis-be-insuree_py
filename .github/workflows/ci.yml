@@ -7,6 +7,7 @@ on:
       - main
       - 'release/**'
       - develop
+      - feature-32719
       - 'feature/**'
   workflow_dispatch:
     inputs:
@@ -17,7 +18,7 @@ on:
 jobs:
   call:
     name: Default CI Flow
-    uses: openimis/openimis-be_py/.github/workflows/ci_module.yml@develop
+    uses: mngoe/openimis-be_py/.github/workflows/ci_module.yml@feature-32719
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     with:
