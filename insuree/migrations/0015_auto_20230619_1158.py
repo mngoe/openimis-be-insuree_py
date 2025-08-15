@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='insuree',
             name='dead',
-            field=models.BooleanField(db_column='Dead', default=False),
+            field=models.BooleanField(db_column='Dead'),
             preserve_default=False,
         ),
         migrations.AddField(
