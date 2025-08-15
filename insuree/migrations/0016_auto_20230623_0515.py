@@ -10,9 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='insuree',
-            name='dead',
-            field=models.BooleanField(blank=True, db_column='Dead', default=False, null=True),
-        ),
+        # migrations.AlterField(
+        #     model_name='insuree',
+        #     name='dead',
+        #     field=models.BooleanField(blank=True, db_column='Dead', default=False, null=True),
+        # ),
     ]
