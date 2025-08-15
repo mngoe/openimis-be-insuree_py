@@ -31,6 +31,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='family',
-            index=models.Index(fields=['legacy_id', 'validity_from', 'validity_to', 'uuid'], name='tblFamilies_LegacyI_5129e4_idx'),
+            index=models.Index(fields=['legacy_id', 'validity_from', 'validity_to'], name='tblFamilies_LegacyI_5129e4_idx'),
         ),
     ]
