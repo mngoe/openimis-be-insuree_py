@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='insuree',
             name='dead',
-            field=models.BooleanField(blank=True, db_column='Dead', default=False, null=True),
+            field=models.BooleanField(blank=True, db_column='Dead', null=True),
         ),
     ]
