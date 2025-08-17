@@ -15,12 +15,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # migrations.AddField(
-        #     model_name='insuree',
-        #     name='dead',
-        #     field=models.BooleanField(db_column='Dead', default=False),
-        #     preserve_default=False,
-        # ),
+        migrations.AddField(
+            model_name='insuree',
+            name='dead',
+            field=models.BooleanField(db_column='Dead', default=False),
+            preserve_default=False,
+        ),
         migrations.AddField(
             model_name='insuree',
             name='deathReason',
