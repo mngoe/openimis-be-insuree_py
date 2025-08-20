@@ -13,6 +13,17 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        
+        migrations.AddField(
+            model_name='family',
+            name='json_ext',
+            field=models.JSONField(blank=True, db_column='JsonExt', null=True),
+        ),
+        migrations.AddField(
+            model_name='insuree',
+            name='json_ext',
+            field=models.JSONField(blank=True, db_column='JsonExt', null=True),
+        ),
         # migrations.CreateModel(
         #     name='InsureeStatusReason',
         #     fields=[
