@@ -15,10 +15,4 @@ class Migration(migrations.Migration):
             name='dead',
             field=models.BooleanField(blank=True, db_column='Dead', default=False, null=True),
         ),
-        migrations.AddField(
-            model_name='family',
-            name='json_ext',
-            field=models.JSONField(blank=True, db_column='JsonExt', null=True),
-        ),
-        
     ]
