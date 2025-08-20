@@ -12,7 +12,7 @@ def create_test_insuree(with_family=True, is_head=False, custom_props=None, fami
     #loof if it exists
 
     from django.db import migrations
-
+    print("We are in the column adind !!!!!!!!!!!!!!!!")
     migrations.RunSQL(
         'ALTER TABLE [tblInsuree] ADD [JsonExt] TEXT;'
     ),
