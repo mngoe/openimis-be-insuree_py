@@ -10,13 +10,6 @@ def create_test_insuree(with_family=True, is_head=False, custom_props=None, fami
     # insuree has a mandatory reference to family and family has a mandatory reference to insuree
     # So we first insert the family with a dummy id and then update it
     #loof if it exists
-
-    from django.db import migrations
-
-    migrations.RunSQL(
-        'ALTER TABLE [tblInsuree] ADD [JsonExt] TEXT;'
-    ),
-    
     family = None
     location = None
     village = None
