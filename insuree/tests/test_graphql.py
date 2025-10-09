@@ -1,31 +1,22 @@
-import base64
 import json
-import time
 import uuid
 from dataclasses import dataclass
 from django.utils.translation import gettext as _
 from core.models import User, filter_validity
 from core.models.openimis_graphql_test_case import openIMISGraphQLTestCase
 from core.test_helpers import create_test_interactive_user
-from django.conf import settings
-from graphene_django.utils.testing import GraphQLTestCase
 from graphql_jwt.shortcuts import get_token
-from location.models import Location
-from location.test_helpers import create_test_location, assign_user_districts
+from location.test_helpers import assign_user_districts
 from rest_framework import status
 from insuree.test_helpers import create_test_insuree
-from location.test_helpers import create_test_location, create_test_health_facility, create_test_village
+from location.test_helpers import create_test_village
 from insuree.models import Family
-
-
-# from openIMIS import schema
 
 
 @dataclass
 class DummyContext:
     """ Just because we need a context to generate. """
     user: User
-
 
 
 class InsureeGQLTestCase(openIMISGraphQLTestCase):
@@ -69,10 +60,6 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         content = json.loads(response.content)
 
         self.assertResponseNoErrors(response)
-        
-
-
-
 
     def test_insuree_query(self):
         
@@ -105,8 +92,6 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         # This validates the status code and if you get errors
         self.assertEqual(content['errors'][0]['message'],_('unauthorized'))
 
-
-
     def test_family_query(self):
         
         response = self.query(
@@ -137,8 +122,6 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
 
         # This validates the status code and if you get errors
         self.assertEqual(content['errors'][0]['message'],_('unauthorized'))
-
-
 
     def test_query_with_variables(self):
         response = self.query(
@@ -237,8 +220,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
     # This validates the status code and if you get errors
       self.assertResponseNoErrors(response)
       self.get_mutation_result(muuid, self.admin_dist_token )
-      
-      
+
     def test_create_family(self):
       muuid='50f8f2c9-7685-4cd5-a7d8-b1fa78d46470'
       fuuid='50f8f2c9-7685-4cd5-a770-b1fa34d46470'
@@ -331,92 +313,89 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
       family = Family.objects.filter(*filter_validity(),uuid= uuid.UUID(fuuid)).first()
       self.assertEqual(family.poverty, True)
 
-      
-      
     def test_inquire(self):
-      response = self.query("""
-query GetInsureeInquire($chfId: String) {
-  insurees(chfId: $chfId) {
-    __typename
-    edges {
-      __typename
-      node {
-        __typename
-        chfId
-        lastName
-        otherNames
-        dob
-        gender {
-          __typename
-          gender
-        }
-        photos {
-          __typename
-          folder
-          filename
-          photo
-        }
-        insureePolicies {
-          __typename
-          edges {
-            __typename
-            node {
+      response = self.query(
+          """
+          query GetInsureeInquire($chfId: String) {
+            insurees(chfId: $chfId) {
               __typename
-              policy {
+              edges {
                 __typename
-                product {
+                node {
                   __typename
-                  name
-                  code
-                  ceiling
-                  ceilingIp
-                  ceilingOp
-                  deductible
-                  deductibleIp
-                  deductibleOp
-                  maxNoAntenatal
-                  maxAmountAntenatal
-                  maxNoSurgery
-                  maxAmountSurgery
-                  maxNoConsultation
-                  maxAmountConsultation
-                  maxNoDelivery
-                  maxAmountDelivery
-                  maxNoHospitalization
-                  maxAmountHospitalization
-                  maxMembers
-                  maxNoVisits
-                  maxInstallments
-                  maxCeilingPolicy
-                  maxCeilingPolicyIp
-                  maxCeilingPolicyOp
-                  maxPolicyExtraMember
-                  maxPolicyExtraMemberIp
-                  maxPolicyExtraMemberOp
+                  chfId
+                  lastName
+                  otherNames
+                  dob
+                  gender {
+                    __typename
+                    gender
+                  }
+                  photos {
+                    __typename
+                    folder
+                    filename
+                    photo
+                  }
+                  insureePolicies {
+                    __typename
+                    edges {
+                      __typename
+                      node {
+                        __typename
+                        policy {
+                          __typename
+                          product {
+                            __typename
+                            name
+                            code
+                            ceiling
+                            ceilingIp
+                            ceilingOp
+                            deductible
+                            deductibleIp
+                            deductibleOp
+                            maxNoAntenatal
+                            maxAmountAntenatal
+                            maxNoSurgery
+                            maxAmountSurgery
+                            maxNoConsultation
+                            maxAmountConsultation
+                            maxNoDelivery
+                            maxAmountDelivery
+                            maxNoHospitalization
+                            maxAmountHospitalization
+                            maxMembers
+                            maxNoVisits
+                            maxInstallments
+                            maxCeilingPolicy
+                            maxCeilingPolicyIp
+                            maxCeilingPolicyOp
+                            maxPolicyExtraMember
+                            maxPolicyExtraMemberIp
+                            maxPolicyExtraMemberOp
+                          }
+                          enrollDate
+                          expiryDate
+                          status
+                          value
+                        }
+                      }
+                    }
+                  }
                 }
-                enrollDate
-                expiryDate
-                status
-                value
               }
             }
           }
-        }
-      }
-    }
-  }
-}
-     
-      """,
-            headers={"HTTP_AUTHORIZATION": f"Bearer {self.ca_token}"},
-        )
+          """,
+          headers={"HTTP_AUTHORIZATION": f"Bearer {self.ca_token}"},
+      )
 
       content = json.loads(response.content)
 
-    # This validates the status code and if you get errors
+      # This validates the status code and if you get errors
       self.assertResponseNoErrors(response)
-      
-      
+
     def test_validate_number_validditiy_with_variables(self):
         response = self.query(
             '''
@@ -440,54 +419,56 @@ query GetInsureeInquire($chfId: String) {
       muuid = 'ffa465c5-6807-4de0-847e-202b7f42123c'
 
       # Send the createInsuree mutation with numeric CHFID and default HIV email
-      response = self.query(f'''
-      mutation {{
-        createInsuree(
-          input: {{
-            clientMutationId: "{muuid}"
-            clientMutationLabel: "Create insuree - numeric chfid default email"
-            chfId: "12345678"
-            lastName: "test"
-            otherNames: "Le positif"
-            genderId: "M"
-            dob: "1990-01-01"
-            head: false
-            marital: "S"
-            currentVillageId: {self.test_village.id}
-            email: "newhivuser_XM7dw70J0M3N@gmail.com"
-            photo:{{
-              officerId: 1
-              date: "2023-12-15"
-              photo: "{self.photo_base64}"
+      response = self.query(
+          f'''
+          mutation {{
+            createInsuree(
+              input: {{
+                clientMutationId: "{muuid}"
+                clientMutationLabel: "Create insuree - numeric chfid default email"
+                chfId: "12345678"
+                lastName: "test"
+                otherNames: "Le positif"
+                genderId: "M"
+                dob: "1990-01-01"
+                head: false
+                marital: "S"
+                currentVillageId: {self.test_village.id}
+                email: "newhivuser_XM7dw70J0M3N@gmail.com"
+                photo: {{
+                  officerId: 1
+                  date: "2023-12-15"
+                  photo: "{self.photo_base64}"
+                }}
+                cardIssued: false
+                status: "AC"
+              }}
+            ) {{
+              clientMutationId
+              internalId
             }}
-            cardIssued: false
-            status: "AC"
           }}
-        ) {{
-          clientMutationId
-          internalId
-        }}
-      }}
-      ''',
-      headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_dist_token}"},
+          ''',
+          headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_dist_token}"},
       )
 
       self.assertEqual(response.status_code, status.HTTP_200_OK)
 
       # Query the mutationLogs using the same clientMutationId to retrieve validation errors
-      log_response = self.query(f'''
-      {{
-        mutationLogs(clientMutationId: "{muuid}") {{
-          edges {{
-            node {{
-              status
-              error
+      log_response = self.query(
+          f'''
+          {{
+            mutationLogs(clientMutationId: "{muuid}") {{
+              edges {{
+                node {{
+                  status
+                  error
+                }}
+              }}
             }}
           }}
-        }}
-      }}
-      ''',
-      headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_dist_token}"},
+          ''',
+          headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_dist_token}"},
       )
 
       log_content = json.loads(log_response.content)
