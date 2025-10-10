@@ -37,7 +37,7 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         cls.ca_user = create_test_interactive_user(username="testLocationNoRight", roles=[9])
         cls.ca_token = get_token(cls.ca_user, DummyContext(user=cls.ca_user))
         cls.admin_dist_user = create_test_interactive_user(username="testLocationDist")
-        assign_user_districts(cls.admin_dist_user, ["1", "01SOA", "2", "02ABO", cls.test_village.parent.parent.code])
+        assign_user_districts(cls.admin_dist_user, [cls.test_village.parent.parent.code])
         cls.admin_dist_token = get_token(cls.admin_dist_user, DummyContext(user=cls.admin_dist_user))
         cls.photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
 
