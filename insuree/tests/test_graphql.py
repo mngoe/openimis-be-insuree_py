@@ -31,7 +31,12 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.test_village = create_test_village()
-        cls.test_insuree = create_test_insuree(with_family=True, is_head=True, custom_props={'current_village':cls.test_village}, family_custom_props={'location':cls.test_village})
+        cls.test_insuree = create_test_insuree(
+          with_family=True,
+          is_head=True,
+          custom_props={'current_village':cls.test_village},
+          family_custom_props={'location':cls.test_village}
+        )
         cls.admin_user = create_test_interactive_user(username="testLocationAdmin")
         cls.admin_token = get_token(cls.admin_user, DummyContext(user=cls.admin_user))
         cls.ca_user = create_test_interactive_user(username="testLocationNoRight", roles=[9])
