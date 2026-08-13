@@ -26,7 +26,9 @@ from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
 from .signals import signal_before_insuree_policy_query, _read_signal_results, \
     signal_before_family_query, signal_before_insuree_search_query
-
+from django.db.models import Exists, OuterRef
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 def family_fk(arg):
     return arg.startswith("members_") or arg.startswith("head_insuree_")
@@ -60,6 +62,22 @@ class FamiliesConnectionField(OrderedDjangoFilterConnectionField):
                            **members_filters)
         return OrderedDjangoFilterConnectionField.orderBy(qs, args)
 
+def make_own_and_child_exists(status=None, **extra_filters):
+    """
+    Retourne un tuple (Exists sur famille elle-même, Exists sur familles enfants),
+    à combiner ensuite avec un OR au niveau du queryset principal.
+    """
+    base_filters = {'validity_to__isnull': True, **extra_filters}
+    if status is not None:
+        base_filters['status'] = status
+
+    own_policy = Policy.objects.filter(
+        family=OuterRef('pk'), **base_filters
+    )
+    child_policy = Policy.objects.filter(
+        family__parent=OuterRef('pk'), **base_filters
+    )
+    return Exists(own_policy), Exists(child_policy)
 
 class Query(ExportableQueryMixin, graphene.ObjectType):
     exportable_fields = ['insurees']
@@ -80,7 +98,8 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         client_mutation_id=graphene.String(),
         ignore_location=graphene.Boolean(),
         orderBy=graphene.List(of_type=graphene.String),
-        additional_filters=graphene.JSONString()
+        additional_filters=graphene.JSONString(),
+        affiliation_type=graphene.String()
     )
     identification_types = graphene.List(IdentificationTypeGQLType)
     educations = graphene.List(EducationGQLType)
@@ -102,8 +121,8 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         orderBy=graphene.List(of_type=graphene.String),
         additional_filter=graphene.JSONString(),
         officer=graphene.String(),
-        is_subfamily=graphene.Boolean()
-
+        is_subfamily=graphene.Boolean(),
+        affiliation_type=graphene.String()
     )
     family_members = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
@@ -230,6 +249,54 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
             filters += [Q(LocationManager().build_user_location_filter_query(info.context.user._u, prefix='current_village__parent__parent', loc_types=['D']) |
                         LocationManager().build_user_location_filter_query(info.context.user._u, prefix='family__location__parent__parent', loc_types=['D']))]
 
+        affiliation_type = kwargs.get("affiliation_type", None)
+        if not affiliation_type:
+            return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
+        fixed_number_of_months = InsureeConfig.number_of_months_for_suspended_policy
+        today = date.today()
+        threshold_date = today - relativedelta(months=fixed_number_of_months)
+        if affiliation_type == 'affiliated':
+            idle_policies = Policy.objects.filter(
+                family=OuterRef('family'),
+                validity_to__isnull=True,
+                status=Policy.STATUS_IDLE
+            )
+            filters.append(Exists(idle_policies))
+
+        elif affiliation_type == 'insured':
+            active_policies = Policy.objects.filter(
+                family=OuterRef('family'),
+                validity_to__isnull=True,
+                status=Policy.STATUS_ACTIVE
+            )
+            filters.append(Exists(active_policies))
+
+        elif affiliation_type == 'preaffiliated':
+            # Cas 1 : police expirée, pas encore définitivement (dans les X derniers mois)
+            recent_expired_policies = Policy.objects.filter(
+                family=OuterRef('family'),
+                validity_to__isnull=True,
+                status=Policy.STATUS_EXPIRED,
+                expiry_date__lte=threshold_date
+            )
+            # Cas 2 : aucune police du tout, jamais
+            any_policy = Policy.objects.filter(
+                family=OuterRef('family')
+            )
+            filters.append(
+                Q(Exists(recent_expired_policies)) | Q(~Exists(any_policy))
+            )
+
+        elif affiliation_type == 'suspended':
+            # On cherche les polices expirées entre il y a 8 mois et aujourd'hui
+            old_expired_policies = Policy.objects.filter(
+                family=OuterRef('family'),
+                validity_to__isnull=True,
+                status=Policy.STATUS_EXPIRED,
+                expiry_date__gte=threshold_date          # Déjà expirée (au plus tard aujourd'hui)
+            )
+            filters.append(Exists(old_expired_policies))
+
         return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
 
     def resolve_family_members(self, info, **kwargs):
@@ -329,6 +396,36 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         # Duplicates cannot be removed with distinct, as TEXT field is not comparable
         ids = Family.objects.filter(*filters).values_list('id')
         dinstinct_queryset = Family.objects.filter(id__in=ids)
+        affiliation_type = kwargs.get("affiliation_type", None)
+        if not affiliation_type:
+            return gql_optimizer.query(dinstinct_queryset.all(), info)
+        fixed_number_of_months = InsureeConfig.number_of_months_for_suspended_policy
+        today = date.today()
+        threshold_date = today - relativedelta(months=fixed_number_of_months)
+
+        if affiliation_type == 'affiliated':
+            own_exists, child_exists = make_own_and_child_exists(status=Policy.STATUS_IDLE)
+            dinstinct_queryset = dinstinct_queryset.filter(Q(own_exists) | Q(child_exists))
+
+        elif affiliation_type == 'insured':
+            own_exists, child_exists = make_own_and_child_exists(status=Policy.STATUS_ACTIVE)
+            dinstinct_queryset = dinstinct_queryset.filter(Q(own_exists) | Q(child_exists))
+
+        elif affiliation_type == 'preaffiliated':
+            own_exists, child_exists = make_own_and_child_exists(
+                status=Policy.STATUS_EXPIRED, expiry_date__lte=threshold_date
+            )
+            own_any, child_any = make_own_and_child_exists()  # sans status, pour "aucune police"
+            dinstinct_queryset = dinstinct_queryset.filter(
+                Q(own_exists) | Q(child_exists) | (~Q(own_any) & ~Q(child_any))
+            )
+
+        elif affiliation_type == 'suspended':
+            own_exists, child_exists = make_own_and_child_exists(
+                status=Policy.STATUS_EXPIRED, expiry_date__gte=threshold_date
+            )
+            dinstinct_queryset = dinstinct_queryset.filter(Q(own_exists) | Q(child_exists))
+
         return gql_optimizer.query(dinstinct_queryset.all(), info)
 
     def resolve_insuree_officers(self, info, location_id=None, **kwargs):
