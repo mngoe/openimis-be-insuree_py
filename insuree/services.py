@@ -357,6 +357,7 @@ class InsureeService:
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data, create_family=True):
         # client_mutation_id = data.pop('client_mutation_id_save', None)
+        print("create or update...")
         if "uuid" in data:
             existing_insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
             if existing_insuree:
@@ -386,6 +387,7 @@ class InsureeService:
         #         if not insuree.family:
         #             print("Auto Create Familly")
         #             create_insuree_family(self.user, client_mutation_id, insuree)
+        print("data is ", data)
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
@@ -414,9 +416,11 @@ class InsureeService:
             else:
                 self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
+            print("mutation.insuree.fsp_required")
             raise ValidationError("mutation.insuree.fsp_required")
 
         if not insuree:
+            print("Insuree is missing")
             # Check that the MPI is not entirely numeric when the insuree's email is the default one
             if 'email' in data:
                 email = data.get('email')
@@ -425,12 +429,14 @@ class InsureeService:
                     if chf_id.isdigit():
                         raise ValidationError(_("mutation.insuree.mpi_entirely_numeric_error"))
             insuree = Insuree(**data)
+        print("Action Update")
         insuree = self._create_or_update(insuree, photo_data)
         if insuree:
             if not insuree.family and create_family:
                 print("Auto Create Missing Familly")
                 insuree.head = True
                 create_insuree_family(self.user, insuree)
+        print("returning ", insuree)
         return insuree
 
     def disable_policies_of_insuree(self, insuree, status_date):
