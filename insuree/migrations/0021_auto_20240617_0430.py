@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='family',
-            index=models.Index(fields=['uuid'], name='IX_tblFamilies_uuid'),
-        )
+        # migrations.AddIndex(
+        #     model_name='family',
+        #     index=models.Index(fields=['uuid'], name='IX_tblFamilies_uuid'),
+        # )
     ]

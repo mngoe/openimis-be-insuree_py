@@ -70,9 +70,15 @@ def validate_insuree_number(insuree_number, insuree_uuid=None):
     query = Insuree.objects.filter(
         chf_id=insuree_number, validity_to__isnull=True)
     insuree = query.first()
-    if insuree_uuid and insuree and uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
-        return [{"errorCode": InsureeConfig.validation_code_taken_insuree_number,
-                 "message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
+    if insuree_uuid and insuree:
+        if isinstance(insuree_uuid, uuid.UUID):
+            if uuid.UUID(insuree.uuid) != insuree_uuid:
+                return [{"errorCode": InsureeConfig.validation_code_taken_insuree_number,
+                         "message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
+        else:
+            if uuid.UUID(insuree.uuid) != uuid.UUID(insuree_uuid):
+                return [{"errorCode": InsureeConfig.validation_code_taken_insuree_number,
+                         "message": "Insuree number has to be unique, %s exists in system" % insuree_number}]
 
     # Nor used here aigain, but in policy module
     # if ChequeImportLine.objects.filter(chequeImportLineCode=insuree_number,chequeImportLineStatus='new').exists()==False:
@@ -288,57 +294,57 @@ def validate_insuree(insuree):
     else:
         validate_insuree_data(insuree)
 
-def create_insuree_family(user,client_mutation_id, insuree):
+def create_insuree_family(user, insuree):
     data = {}
     data['audit_user_id'] = user.id_for_audit
     from core.utils import TimeUtils
     data['validity_from'] = TimeUtils.now()
 
-    head_insuree_data = {
-        'id': insuree.id,
-        'uuid': insuree.uuid,
-        'chf_id': insuree.chf_id,
-        'last_name': insuree.last_name,
-        'other_names': insuree.other_names,
-        'gender_id': insuree.gender_id,
-        'dob': insuree.dob,
-        'head': insuree.head,
-        'marital': insuree.marital,
-        'passport': insuree.passport,
-        'phone': insuree.phone,
-        'email': insuree.email,
-        'current_address': insuree.current_address,
-        'geolocation': insuree.geolocation,
-        'current_village_id': insuree.current_village_id,
-        'photo_id': insuree.photo_id,
-        'photo_date': insuree.photo_date,
-        'card_issued': insuree.card_issued,
-        'relationship_id': insuree.relationship_id,
-        'profession_id': insuree.profession_id,
-        'education_id': insuree.education_id,
-        'type_of_id_id': insuree.type_of_id_id,
-        'health_facility_id': insuree.health_facility_id,
-        'offline': insuree.offline,
-        'audit_user_id': insuree.audit_user_id
-    }
+    # head_insuree_data = {
+    #     'id': insuree.id,
+    #     'uuid': insuree.uuid,
+    #     'chf_id': insuree.chf_id,
+    #     'last_name': insuree.last_name if insuree.last_name != "" else " ",
+    #     'other_names': insuree.other_names if insuree.other_names != "" else " ",
+    #     'gender_id': insuree.gender_id,
+    #     'dob': insuree.dob,
+    #     'head': insuree.head,
+    #     'marital': insuree.marital,
+    #     'passport': insuree.passport,
+    #     'phone': insuree.phone,
+    #     'email': insuree.email,
+    #     'current_address': insuree.current_address,
+    #     'geolocation': insuree.geolocation,
+    #     'current_village_id': insuree.current_village_id,
+    #     'photo_id': insuree.photo_id,
+    #     'photo_date': insuree.photo_date,
+    #     'card_issued': insuree.card_issued,
+    #     'relationship_id': insuree.relationship_id,
+    #     'profession_id': insuree.profession_id,
+    #     'education_id': insuree.education_id,
+    #     'type_of_id_id': insuree.type_of_id_id,
+    #     'health_facility_id': insuree.health_facility_id,
+    #     'offline': insuree.offline,
+    #     'audit_user_id': insuree.audit_user_id
+    # }
 
-    data['head_insuree'] = head_insuree_data
+    # data['head_insuree'] = head_insuree_data
+    data['head_insuree_id'] = insuree.id
 
-    if (head_insuree_data["current_village_id"]):
-        current_village_id = head_insuree_data["current_village_id"]
-        current_village = location_models.Location.objects.get(id=current_village_id)
+    if insuree.current_village_id:
+        current_village = location_models.Location.objects.get(id=insuree.current_village_id)
         data["location"] = current_village
     else:
         data["location"] = location_models.Location.objects.get(id=1)
 
     family = FamilyService(user).create_or_update(data)
-    FamilyMutation.object_mutated(
-        user, client_mutation_id=client_mutation_id, family=family)
+    # FamilyMutation.object_mutated(
+    #     user, client_mutation_id=client_mutation_id, family=family)
 
-    insuree.family = family
-    insuree.save()
-    InsureeMutation.object_mutated(
-            user, client_mutation_id=client_mutation_id, insuree=insuree)
+    # insuree.family = family
+    # insuree.save()
+    # InsureeMutation.object_mutated(
+    #         user, client_mutation_id=client_mutation_id, insuree=insuree)
 
     logger.debug(f"Famille créée pour l'assuré {insuree.chf_id}")
 
@@ -349,9 +355,10 @@ class InsureeService:
         self.user = user
 
     @register_service_signal('insuree_service.create_or_update')
-    def create_or_update(self, data):
+    def create_or_update(self, data, create_family=True):
+        # client_mutation_id = data.pop('client_mutation_id_save', None)
         if "uuid" in data:
-            existing_insuree = Insuree.objects.prefetch_related("photo").filter(uuid=data["uuid"]).first()
+            existing_insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
             if existing_insuree:
                 print("Old Mail ", existing_insuree.email)
                 if 'email' in data:
@@ -365,12 +372,27 @@ class InsureeService:
                         # if the patient is NON HIV, you can't set him as HIV
                         if new_email == 'newhivuser_XM7dw70J0M3N@gmail.com':
                             raise Exception("Sorry you can't pass an insuree from non HIV to HIV")
+        #     existing_insuree.save_history()
+        #     # reset the non required fields
+        #     # (each update is 'complete', necessary to be able to set 'null')
+        #     reset_insuree_before_update(existing_insuree)
+        #     [setattr(existing_insuree, key, data[key]) for key in data]
+        # else:
+        #     errors = validate_insuree_number(data["chf_id"])
+        #     if errors:
+        #         raise Exception("Invalid insuree number")
+        #     else:
+        #         insuree = Insuree.objects.create(**data)
+        #         if not insuree.family:
+        #             print("Auto Create Familly")
+        #             create_insuree_family(self.user, client_mutation_id, insuree)
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
         data['audit_user_id'] = self.user.id_for_audit
         data['validity_from'] = now
         status = data.get('status', InsureeStatus.ACTIVE)
+        insuree = None
         if status not in [choice[0] for choice in InsureeStatus.choices]:
             raise ValidationError(_("mutation.insuree.wrong_status"))
         if InsureeConfig.is_insuree_photo_required and photo_data is None:
@@ -387,13 +409,29 @@ class InsureeService:
         elif "uuid" in data:
             insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
             if not insuree:
-                insuree = Insuree.objects.create(**data)
-            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
+                pass
+                # insuree = Insuree.objects.create(**data)
+            else:
+                self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             raise ValidationError("mutation.insuree.fsp_required")
 
-        insuree = Insuree(**data)
-        return self._create_or_update(insuree, photo_data)
+        if not insuree:
+            # Check that the MPI is not entirely numeric when the insuree's email is the default one
+            if 'email' in data:
+                email = data.get('email')
+                if email == 'newhivuser_XM7dw70J0M3N@gmail.com':
+                    chf_id = data.get('chf_id')                        
+                    if chf_id.isdigit():
+                        raise ValidationError(_("mutation.insuree.mpi_entirely_numeric_error"))
+            insuree = Insuree(**data)
+        insuree = self._create_or_update(insuree, photo_data)
+        if insuree:
+            if not insuree.family and create_family:
+                print("Auto Create Missing Familly")
+                insuree.head = True
+                create_insuree_family(self.user, insuree)
+        return insuree
 
     def disable_policies_of_insuree(self, insuree, status_date):
         policies_to_cancel = InsureePolicy.objects.filter(insuree=insuree.id, validity_to__isnull=True).all()
@@ -524,7 +562,7 @@ class FamilyService:
         if head_insuree_data:
             head_insuree_data["head"] = True
             head_insuree = InsureeService(
-                self.user).create_or_update(head_insuree_data)
+                self.user).create_or_update(head_insuree_data, create_family=False)
             data["head_insuree_id"] = head_insuree.id
         
         elif 'head_insuree_id' not in data:
