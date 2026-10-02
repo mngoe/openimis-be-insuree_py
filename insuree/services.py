@@ -425,6 +425,8 @@ class InsureeService:
                     if chf_id.isdigit():
                         raise ValidationError(_("mutation.insuree.mpi_entirely_numeric_error"))
             insuree = Insuree(**data)
+        else:
+            self._update(insuree, data)
         insuree = self._create_or_update(insuree, photo_data)
         if insuree:
             if not insuree.family and create_family:
@@ -528,6 +530,12 @@ class InsureeService:
                     'detail': insuree.uuid}]
             }
 
+    def _update(self, insuree, data):
+        insuree.save_history()
+        # reset the non required fields
+        # (each update is 'complete', necessary to be able to set 'null')
+        reset_insuree_before_update(insuree)
+        [setattr(insuree, key, data[key]) for key in data]
 
 class InsureePolicyService:
     def __init__(self, user):
