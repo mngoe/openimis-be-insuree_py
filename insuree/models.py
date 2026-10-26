@@ -10,6 +10,7 @@ from graphql import ResolveInfo
 from insuree.apps import InsureeConfig
 from location import models as location_models
 from location.models import LocationManager
+from location.apps import LocationConfig
 
 class Gender(models.Model):
     code = models.CharField(db_column='Code', primary_key=True, max_length=1)
@@ -136,7 +137,7 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
             queryset = queryset.exclude(
                 members__chf_id__in=InsureeConfig.excluded_insuree_chfids
             )
-        if settings.ROW_SECURITY and not user.is_imis_admin:
+        if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
             return queryset.filter(
                 LocationManager().build_user_location_filter_query(user._u, prefix='location__parent__parent', loc_types=['D'])
             )
@@ -314,7 +315,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         # The insuree "health facility" is the "First Point of Service"
         # (aka the 'preferred/reference' HF for an insuree)
         # ... so not to be used as 'strict filtering'
-        if settings.ROW_SECURITY and not user.is_imis_admin:
+        if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
             return queryset.filter(
                 Q(LocationManager().build_user_location_filter_query(user._u, prefix='current_village__parent__parent', loc_types=['D']) |
                 LocationManager().build_user_location_filter_query(user._u, prefix='family__location__parent__parent', loc_types=['D']))
@@ -358,7 +359,7 @@ class InsureePolicy(core_models.VersionedModel):
             user = user.context.user
         if settings.ROW_SECURITY and user.is_anonymous:
             return queryset.filter(id=-1)
-        if settings.ROW_SECURITY and not user.is_imis_admin:
+        if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
             return queryset.filter(
                 Q(LocationManager().build_user_location_filter_query(user._u, prefix='insuree__current_village__parent__parent', loc_types=['D']) |
                     LocationManager().build_user_location_filter_query(user._u, prefix='insuree__family__location__parent__parent', loc_types=['D']))
