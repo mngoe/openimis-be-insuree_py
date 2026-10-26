@@ -420,7 +420,6 @@ class InsureeService:
             raise ValidationError("mutation.insuree.fsp_required")
 
         if not insuree:
-            print("Insuree is missing")
             # Check that the MPI is not entirely numeric when the insuree's email is the default one
             if 'email' in data:
                 email = data.get('email')
