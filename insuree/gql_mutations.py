@@ -33,8 +33,8 @@ class InsureeBase:
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)
     chf_id = graphene.String(max_length=12, required=False)
-    last_name = graphene.String(max_length=100, required=True)
-    other_names = graphene.String(max_length=100, required=True)
+    last_name = graphene.String(max_length=100, required=False)
+    other_names = graphene.String(max_length=100, required=False)
     gender_id = graphene.String(max_length=1, required=True)
     dob = graphene.Date(required=True)
     
@@ -111,8 +111,8 @@ class UpdateFamilyInputType(FamilyInputType):
 
 
 def update_or_create_insuree(data, user):
-    data["client_mutation_id_save"] = data.pop('client_mutation_id', None)
-    # data.pop('client_mutation_id', None)
+    #data["client_mutation_id_save"] = data.pop('client_mutation_id', None)
+    data.pop('client_mutation_id', None)
     data.pop('client_mutation_label', None)
     return InsureeService(user).create_or_update(data)
 
@@ -247,9 +247,6 @@ class CreateInsureeMutation(OpenIMISMutation):
             client_mutation_id = data.get("client_mutation_id")
             insuree = update_or_create_insuree(data, user)
             InsureeMutation.object_mutated(user, client_mutation_id=client_mutation_id, insuree=insuree)
-            # Check if insuree already has a family ref29150
-            if not insuree.family:
-                create_insuree_family(user, client_mutation_id, insuree)
             return None
         except Exception as exc:
             logger.exception("insuree.mutation.failed_to_create_insuree")
@@ -472,40 +469,47 @@ def create_family_for_insurees_without_family(user, data):
     for insuree in insurees_without_family:
         data['validity_from'] = TimeUtils.now()
         client_mutation_id = data.get("client_mutation_id")
+        if len(insuree.last_name) == 0 or len(insuree.other_names) == 0:
+            if len(insuree.last_name) == 0:
+                insuree.last_name = " "
+            if len(insuree.other_names) == 0:
+                insuree.other_names = " "
+            insuree.save()
 
-        head_insuree_data = {
-            'id': insuree.id,
-            'uuid': insuree.uuid,
-            'chf_id': insuree.chf_id,
-            'last_name': insuree.last_name,
-            'other_names': insuree.other_names,
-            'gender_id': insuree.gender_id,
-            'dob': insuree.dob,
-            'head': insuree.head,
-            'marital': insuree.marital,
-            'passport': insuree.passport,
-            'phone': insuree.phone,
-            'email': insuree.email,
-            'current_address': insuree.current_address,
-            'geolocation': insuree.geolocation,
-            'current_village_id': insuree.current_village_id,
-            'photo_id': insuree.photo_id,
-            'photo_date': insuree.photo_date,
-            'card_issued': insuree.card_issued,
-            'relationship_id': insuree.relationship_id,
-            'profession_id': insuree.profession_id,
-            'education_id': insuree.education_id,
-            'type_of_id_id': insuree.type_of_id_id,
-            'health_facility_id': insuree.health_facility_id,
-            'offline': insuree.offline,
-            'audit_user_id': insuree.audit_user_id
-        }
+        # head_insuree_data = {
+        #     'id': insuree.id,
+        #     'uuid': insuree.uuid,
+        #     'chf_id': insuree.chf_id,
+        #     'last_name': insuree.last_name if len(insuree.last_name) != 0 else "****",
+        #     'other_names': insuree.other_names if len(insuree.other_names) != 0 else "****",
+        #     'gender_id': insuree.gender_id,
+        #     'dob': insuree.dob,
+        #     'head': insuree.head,
+        #     'marital': insuree.marital,
+        #     'passport': insuree.passport,
+        #     'phone': insuree.phone,
+        #     'email': insuree.email,
+        #     'current_address': insuree.current_address,
+        #     'geolocation': insuree.geolocation,
+        #     'current_village_id': insuree.current_village_id,
+        #     'photo_id': insuree.photo_id,
+        #     'photo_date': insuree.photo_date,
+        #     'card_issued': insuree.card_issued,
+        #     'relationship_id': insuree.relationship_id,
+        #     'profession_id': insuree.profession_id,
+        #     'education_id': insuree.education_id,
+        #     'type_of_id_id': insuree.type_of_id_id,
+        #     'health_facility_id': insuree.health_facility_id,
+        #     'offline': insuree.offline,
+        #     'audit_user_id': insuree.audit_user_id
+        # }
+        # print("head_insuree_data ", head_ insuree_data)
 
-        data['head_insuree'] = head_insuree_data
+        # data['head_insuree'] = head_insuree_data
+        data['head_insuree_id'] = insuree.id
 
-        if (head_insuree_data["current_village_id"]):
-            current_village_id = head_insuree_data["current_village_id"]
-            current_village = location_models.Location.objects.get(id=current_village_id)
+        if insuree.current_village_id:
+            current_village = location_models.Location.objects.get(id=insuree.current_village_id)
             data["location"] = current_village
         else:
             data["location"] = location_models.Location.objects.get(id=1)

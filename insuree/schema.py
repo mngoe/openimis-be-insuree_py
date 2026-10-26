@@ -196,7 +196,8 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
             filters += [Q(LocationManager().build_user_location_filter_query(info.context.user._u, prefix='current_village__parent__parent', loc_types=['D']) |
                         LocationManager().build_user_location_filter_query(info.context.user._u, prefix='family__location__parent__parent', loc_types=['D']))]
 
-        return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
+        # return gql_optimizer.query(Insuree.objects.filter(*filters).all(), info)
+        return gql_optimizer.query(Insuree.objects.select_related('family', 'gender', 'health_facility', 'current_village').filter(*filters).all(), info)
 
     def resolve_family_members(self, info, **kwargs):
         if not info.context.user.has_perms(InsureeConfig.gql_query_insuree_family_members):
@@ -279,7 +280,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
             filters += [Q(**{f: parent_location})]
 
         # Limit the list by the logged in user location mapping
-        if not info.context.user._u.is_imis_admin:
+        if not info.context.user._u.is_imis_admin and not LocationConfig.no_location_check:
             filters += [LocationManager().build_user_location_filter_query(info.context.user._u,
                                                                            prefix='location__parent__parent', loc_types=['D'])]
 
