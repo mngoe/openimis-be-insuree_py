@@ -35,15 +35,43 @@ def village_access_requirements(village):
     return [VILLAGE_MODEL, village.uuid, ENROLMENT_UBA_LINK_TYPE]
 
 
+def village_in_scope(user, village):
+    """
+    Is `village` inside the districts `user` is assigned to ? The same rule as the read
+    side (`Family.get_queryset`): a right, global or UBA, never reaches a row outside the
+    user's districts. An unknown village (None) is not located, so not refused here.
+    """
+    if village is None:
+        return True
+    from django.conf import settings
+    from location.apps import LocationConfig
+    from location.models import Location
+    if not settings.ROW_SECURITY or LocationConfig.no_location_check:
+        return True
+    user = Location.scoping_user(user)
+    if user is None or getattr(user, "is_anonymous", True):
+        return False
+    if getattr(user, "is_imis_admin", False):
+        return True
+    village_id = getattr(village, "id", village)
+    return Location.objects.filter(id=village_id).filter(
+        *Location.filter_location(user, paths=("parent__parent",), loc_types=['D'])
+    ).exists()
+
+
 def has_enrolment_perms(user, perms, villages):
     """
-    Are `perms` granted on every village of `villages` ? The global bag answers alone;
-    otherwise each village needs the rights in the UBA bag and an ENROLMENT link on it.
-    A write whose village is unknown (None) can only be granted by the global bag.
+    Are `perms` granted on every village of `villages` ? Every known village must first
+    sit inside the user's districts (row security, whatever bag the right comes from).
+    Then the global bag answers alone; otherwise each village needs the rights in the
+    UBA bag and an ENROLMENT link on it. A write whose village is unknown (None) can
+    only be granted by the global bag.
     """
+    villages = list(villages)
+    if not all(village_in_scope(user, village) for village in villages):
+        return False
     if user.has_perms(perms):
         return True
-    villages = list(villages)
     if not villages or any(village is None for village in villages):
         return False
     return all(

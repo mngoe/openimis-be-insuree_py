@@ -1,3 +1,4 @@
+from core.gql import ScopedQuerysetMixin
 import graphene
 from graphene_django import DjangoObjectType
 
@@ -22,7 +23,7 @@ class GenderGQLType(DjangoObjectType):
         }
 
 
-class PhotoGQLType(DjangoObjectType):
+class PhotoGQLType(ScopedQuerysetMixin, DjangoObjectType):
     photo = graphene.String()
 
     def resolve_photo(self, info):
@@ -107,7 +108,7 @@ class InsureeStatusReasonGQLType(DjangoObjectType):
         connection_class = ExtendedConnection
 
 
-class InsureeGQLType(DjangoObjectType):
+class InsureeGQLType(ScopedQuerysetMixin, DjangoObjectType):
     age = graphene.Int(source='age')
     client_mutation_id = graphene.String()
     photo = PhotoGQLType()
@@ -174,12 +175,9 @@ class InsureeGQLType(DjangoObjectType):
             'mutation').filter(mutation__status=0).first()
         return insuree_mutation.mutation.client_mutation_id if insuree_mutation else None
 
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        return Insuree.get_queryset(queryset, info)
 
 
-class FamilyGQLType(DjangoObjectType):
+class FamilyGQLType(ScopedQuerysetMixin, DjangoObjectType):
     client_mutation_id = graphene.String()
 
     def resolve_location(self, info):
@@ -219,12 +217,9 @@ class FamilyGQLType(DjangoObjectType):
             'mutation').filter(mutation__status=0).first()
         return family_mutation.mutation.client_mutation_id if family_mutation else None
 
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        return Family.get_queryset(queryset, info)
 
 
-class InsureePolicyGQLType(DjangoObjectType):
+class InsureePolicyGQLType(ScopedQuerysetMixin, DjangoObjectType):
     class Meta:
         model = InsureePolicy
         filter_fields = {
@@ -238,16 +233,13 @@ class InsureePolicyGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         connection_class = ExtendedConnection
 
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        return InsureePolicy.get_queryset(queryset, info)
 
 
-class FamilyMutationGQLType(DjangoObjectType):
+class FamilyMutationGQLType(ScopedQuerysetMixin, DjangoObjectType):
     class Meta:
         model = FamilyMutation
 
 
-class InsureeMutationGQLType(DjangoObjectType):
+class InsureeMutationGQLType(ScopedQuerysetMixin, DjangoObjectType):
     class Meta:
         model = InsureeMutation

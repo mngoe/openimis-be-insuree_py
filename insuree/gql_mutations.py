@@ -316,7 +316,7 @@ class UpdateInsureeMutation(OpenIMISMutation):
             target_village = _insuree_target_village(data)
             if target_village is not None:
                 villages.append(target_village)
-            check_enrolment_perms(user, InsureeConfig.gql_mutation_create_insurees_perms, *villages)
+            check_enrolment_perms(user, InsureeConfig.gql_mutation_update_insurees_perms, *villages)
             data['audit_user_id'] = user.id_for_audit
             client_mutation_id = data.get("client_mutation_id")
             insuree = update_or_create_insuree(data, user)

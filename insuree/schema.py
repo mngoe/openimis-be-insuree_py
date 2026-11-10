@@ -209,8 +209,13 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
     def resolve_family_members(self, info, **kwargs):
         if not can_query(info.context.user, InsureeConfig.gql_query_insuree_family_members):
             raise PermissionDenied(_("unauthorized"))
-        family = Family.objects.get(Q(uuid=(kwargs.get('family_uuid'))))
-        return Insuree.objects.filter(
+        user = info.context.user
+        # row security: an out-of-scope family reads as not found, and its members
+        # (a list field, so no type-level get_queryset) are scoped explicitly
+        family = Family.get_queryset(None, user).filter(uuid=kwargs.get('family_uuid')).first()
+        if family is None:
+            return Insuree.objects.none()
+        return Insuree.get_queryset(None, user).filter(
             Q(family=family),
             *filter_validity(**kwargs)
         ).order_by('-head', 'dob')
@@ -300,7 +305,8 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         return gql_optimizer.query(dinstinct_queryset.all(), info)
 
     def resolve_insuree_officers(self, info, **kwargs):
-        if not can_query(info.context.user, InsureeConfig.gql_query_insuree_officers_perms):
+        # no dedicated right: the officers listed are narrowed by the location / UBA scope
+        if info.context.user.is_anonymous:
             raise PermissionDenied(_("unauthorized"))
 
     def resolve_insuree_policy(self, info, **kwargs):

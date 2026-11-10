@@ -34,6 +34,9 @@ class Gender(models.Model):
 
 
 class InsureePhoto(core_models.VersionedModel):
+    # A photo is exactly as visible as its insuree.
+    row_scope = core_models.ParentScope("insuree")
+
     id = models.AutoField(db_column='PhotoID', primary_key=True)
     uuid = models.CharField(db_column='PhotoUUID',
                             max_length=36, default=uuid.uuid4, unique=True)
@@ -133,23 +136,21 @@ class Family(core_models.VersionedModel, core_models.ExtendableModel):
         return queryset
 
     @classmethod
-    def get_queryset(cls, queryset, user):
-        queryset = cls.filter_queryset(queryset)
+    def get_queryset(cls, queryset, user=None, *, validity=None, audits=None):
+        # OP-2029: validity / audits on request, the model's own default otherwise
+        queryset = cls.apply_row_filters(queryset, validity, audits, default=cls.filter_queryset)
         # GraphQL calls with an info object while Rest calls with the user itself
-        if isinstance(user, ResolveInfo):
-            user = user.context.user
-        if settings.ROW_SECURITY and user.is_anonymous:
-            return queryset.filter(id=-1)
+        user = cls.scoping_user(user)
+        if settings.ROW_SECURITY and (user is None or user.is_anonymous):
+            return cls.no_rows(queryset)
         if InsureeConfig.excluded_insuree_chfids:
             queryset = queryset.exclude(
                 members__chf_id__in=InsureeConfig.excluded_insuree_chfids
             )
         if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
-            return queryset.filter(
-                LocationManager().build_user_location_filter_query(
-                    user._u, prefix='location__parent__parent', loc_types=['D'],
-                    link_types=ENROLMENT_UBA_LINK_TYPE)
-            )
+            return queryset.filter(*cls.filter_location(
+                user, paths=("location__parent__parent",), loc_types=['D'],
+                link_types=ENROLMENT_UBA_LINK_TYPE))
         return queryset
 
     class Meta:
@@ -309,14 +310,27 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
             queryset = cls.objects.all()
         return queryset
 
+    #: Where an insuree lives: its current village, else its family's location.
+    #: Read as an ordered fallback, not an OR -- the location filter lets a NULL
+    #: path through, so an OR made every insuree without a current village
+    #: visible to every district whatever its family's location.
+    LOCATION_PATHS = ("current_village__parent__parent", "family__location__parent__parent")
+
     @classmethod
-    def get_queryset(cls, queryset, user):
-        queryset = cls.filter_queryset(queryset)
+    def location_filter(cls, user, prefix=""):
+        """Q objects (filter_location style) for `user` on insurees reached by `prefix`."""
+        return cls.filter_location(
+            user, prefix=prefix, paths=cls.LOCATION_PATHS, loc_types=['D'],
+            link_types=ENROLMENT_UBA_LINK_TYPE, fallback=True)
+
+    @classmethod
+    def get_queryset(cls, queryset, user=None, *, validity=None, audits=None):
+        # OP-2029: validity / audits on request, the model's own default otherwise
+        queryset = cls.apply_row_filters(queryset, validity, audits, default=cls.filter_queryset)
         # GraphQL calls with an info object while Rest calls with the user itself
-        if isinstance(user, ResolveInfo):
-            user = user.context.user
-        if settings.ROW_SECURITY and user.is_anonymous:
-            return queryset.filter(id=-1)
+        user = cls.scoping_user(user)
+        if settings.ROW_SECURITY and (user is None or user.is_anonymous):
+            return cls.no_rows(queryset)
         if InsureeConfig.excluded_insuree_chfids:
             queryset = queryset.exclude(
                 chf_id__in=InsureeConfig.excluded_insuree_chfids
@@ -325,14 +339,7 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
         # (aka the 'preferred/reference' HF for an insuree)
         # ... so not to be used as 'strict filtering'
         if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
-            return queryset.filter(
-                Q(LocationManager().build_user_location_filter_query(
-                    user._u, prefix='current_village__parent__parent', loc_types=['D'],
-                    link_types=ENROLMENT_UBA_LINK_TYPE) |
-                  LocationManager().build_user_location_filter_query(
-                    user._u, prefix='family__location__parent__parent', loc_types=['D'],
-                    link_types=ENROLMENT_UBA_LINK_TYPE))
-            )
+            return queryset.filter(*cls.location_filter(user))
 
         return queryset
     class Meta:
@@ -365,23 +372,17 @@ class InsureePolicy(core_models.VersionedModel):
         return queryset
 
     @classmethod
-    def get_queryset(cls, queryset, user):
-        queryset = cls.filter_queryset(queryset)
+    def get_queryset(cls, queryset, user=None, *, validity=None, audits=None):
+        # OP-2029: validity / audits on request, the model's own default otherwise
+        queryset = cls.apply_row_filters(queryset, validity, audits, default=cls.filter_queryset)
         # GraphQL calls with an info object while Rest calls with the user itself
-        if isinstance(user, ResolveInfo):
-            user = user.context.user
-        if settings.ROW_SECURITY and user.is_anonymous:
-            return queryset.filter(id=-1)
+        user = cls.scoping_user(user)
+        if settings.ROW_SECURITY and (user is None or user.is_anonymous):
+            return cls.no_rows(queryset)
         if settings.ROW_SECURITY and not user.is_imis_admin and not LocationConfig.no_location_check:
-            return queryset.filter(
-                Q(LocationManager().build_user_location_filter_query(
-                    user._u, prefix='insuree__current_village__parent__parent', loc_types=['D'],
-                    link_types=ENROLMENT_UBA_LINK_TYPE) |
-                  LocationManager().build_user_location_filter_query(
-                    user._u, prefix='insuree__family__location__parent__parent', loc_types=['D'],
-                    link_types=ENROLMENT_UBA_LINK_TYPE))
-            )
- 
+            # same ordered fallback as the insuree itself
+            return queryset.filter(*Insuree.location_filter(user, prefix="insuree__"))
+
         return queryset
 
     class Meta:
@@ -390,6 +391,7 @@ class InsureePolicy(core_models.VersionedModel):
 
 
 class InsureeMutation(core_models.UUIDModel, core_models.ObjectMutation):
+    row_scope = core_models.ParentScope("insuree")
     insuree = models.ForeignKey(Insuree, models.DO_NOTHING, related_name='mutations')
     mutation = models.ForeignKey(core_models.MutationLog, models.DO_NOTHING, related_name='insurees')
 
@@ -399,6 +401,7 @@ class InsureeMutation(core_models.UUIDModel, core_models.ObjectMutation):
 
 
 class FamilyMutation(core_models.UUIDModel, core_models.ObjectMutation):
+    row_scope = core_models.ParentScope("family")
     family = models.ForeignKey(Family, models.DO_NOTHING, related_name='mutations')
     mutation = models.ForeignKey(core_models.MutationLog, models.DO_NOTHING, related_name='families')
 
