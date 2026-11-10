@@ -424,8 +424,7 @@ class InsureeService:
                 pass
                 # insuree = Insuree.objects.create(**data)
             else:
-                self._update(insuree, data)
-            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
+                self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             print("mutation.insuree.fsp_required")
             raise ValidationError("mutation.insuree.fsp_required")
@@ -546,18 +545,13 @@ class InsureeService:
             }
 
     def _update(self, insuree, data):
-        insuree.save_history()
+        # no save_history() here: _create_or_update archives the row it reloads from the DB
+        # (doing both wrote two history rows per update, #38082)
         # reset the non required fields
         # (each update is 'complete', necessary to be able to set 'null')
         reset_insuree_before_update(insuree)
         [setattr(insuree, key, data[key]) for key in data]
 
-    def _update(self, insuree, data):
-        insuree.save_history()
-        # reset the non required fields
-        # (each update is 'complete', necessary to be able to set 'null')
-        reset_insuree_before_update(insuree)
-        [setattr(insuree, key, data[key]) for key in data]
 
 
 class InsureePolicyService:
