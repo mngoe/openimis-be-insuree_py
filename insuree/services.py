@@ -412,7 +412,8 @@ class InsureeService:
                 pass
                 # insuree = Insuree.objects.create(**data)
             else:
-                self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
+                self._update(insuree, data)
+            self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
             raise ValidationError("mutation.insuree.fsp_required")
 
@@ -527,6 +528,14 @@ class InsureeService:
                     'message': _("insuree.mutation.failed_to_cancel_insuree_policies") % {'chfid': insuree.chfid},
                     'detail': insuree.uuid}]
             }
+
+
+    def _update(self, insuree, data):
+        insuree.save_history()
+        # reset the non required fields
+        # (each update is 'complete', necessary to be able to set 'null')
+        reset_insuree_before_update(insuree)
+        [setattr(insuree, key, data[key]) for key in data]
 
 
 class InsureePolicyService:
