@@ -19,6 +19,7 @@ from core.models import filter_validity, resolved_id_reference
 from cs.models import ChequeImportLine
 from location import models as location_models
 from .models import FamilyMutation, InsureeMutation
+from .utils import normalize_insuree_number
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,13 @@ def custom_insuree_number_validation(insuree_number):
 
 
 def validate_insuree_number(insuree_number, insuree_uuid=None):
+    try:
+        insuree_number = normalize_insuree_number(insuree_number)
+    except ValidationError as exc:
+        return [{
+            "errorCode": InsureeConfig.validation_code_invalid_insuree_number_exception,
+            "message": exc.messages[0] if exc.messages else str(exc),
+        }]
     query = Insuree.objects.filter(
         chf_id=insuree_number, validity_to__isnull=True)
     insuree = query.first()
@@ -357,6 +365,9 @@ class InsureeService:
     @register_service_signal('insuree_service.create_or_update')
     def create_or_update(self, data, create_family=True):
         # client_mutation_id = data.pop('client_mutation_id_save', None)
+        if data.get("chf_id") is not None:
+            data["chf_id"] = normalize_insuree_number(data["chf_id"])
+        print("create or update...")
         if "uuid" in data:
             existing_insuree = Insuree.objects.filter(uuid=data["uuid"]).first()
             if existing_insuree:
@@ -386,6 +397,7 @@ class InsureeService:
         #         if not insuree.family:
         #             print("Auto Create Familly")
         #             create_insuree_family(self.user, client_mutation_id, insuree)
+        print("data is ", data)
         photo_data = data.pop('photo', None)
         from core import datetime
         now = datetime.datetime.now()
@@ -415,6 +427,7 @@ class InsureeService:
                 self._update(insuree, data)
             self.activate_policies_of_insuree(insuree, audit_user_id=data['audit_user_id'])
         if InsureeConfig.insuree_fsp_mandatory and 'health_facility_id' not in data:
+            print("mutation.insuree.fsp_required")
             raise ValidationError("mutation.insuree.fsp_required")
 
         if not insuree:
@@ -426,12 +439,15 @@ class InsureeService:
                     if chf_id.isdigit():
                         raise ValidationError(_("mutation.insuree.mpi_entirely_numeric_error"))
             insuree = Insuree(**data)
+        else:
+            self._update(insuree, data)
         insuree = self._create_or_update(insuree, photo_data)
         if insuree:
             if not insuree.family and create_family:
                 print("Auto Create Missing Familly")
                 insuree.head = True
                 create_insuree_family(self.user, insuree)
+        print("returning ", insuree)
         return insuree
 
     def disable_policies_of_insuree(self, insuree, status_date):
@@ -529,6 +545,12 @@ class InsureeService:
                     'detail': insuree.uuid}]
             }
 
+    def _update(self, insuree, data):
+        insuree.save_history()
+        # reset the non required fields
+        # (each update is 'complete', necessary to be able to set 'null')
+        reset_insuree_before_update(insuree)
+        [setattr(insuree, key, data[key]) for key in data]
 
     def _update(self, insuree, data):
         insuree.save_history()

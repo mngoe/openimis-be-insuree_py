@@ -37,6 +37,16 @@ DEFAULT_CFG = {
     "insuree_fsp_mandatory": False,
     "insuree_as_worker": False,
     "is_insuree_photo_required": False,
+    "no_location_check": False,
+    "mpi_base_url": None,
+    "mpi_auth_user": None,
+    "mpi_auth_password": None,
+    "mpi_timeout_connect": 3,
+    "mpi_timeout_read": 7,
+    "mpi_total_timeout": 10,
+    "mpi_patient_path": "/api/fhir/Patient",
+    "mpi_default_location_code": "05BAT06V",
+    "mpi_fallback_enabled": False,
 }
 
 
@@ -73,6 +83,16 @@ class InsureeConfig(AppConfig):
     insuree_fsp_mandatory = None
     insuree_as_worker = None
     is_insuree_photo_required = None
+    no_location_check = None
+    mpi_base_url = None
+    mpi_auth_user = None
+    mpi_auth_password = None
+    mpi_timeout_connect = 3
+    mpi_timeout_read = 7
+    mpi_total_timeout = 10
+    mpi_patient_path = "/api/fhir/Patient"
+    mpi_default_location_code = "05BAT06V"
+    mpi_fallback_enabled = False
 
     def __load_config(self, cfg):
         for field in cfg:

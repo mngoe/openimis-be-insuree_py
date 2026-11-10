@@ -1,6 +1,4 @@
 from django.test import TestCase
-
-from insuree.apps import InsureeConfig
 from insuree.services import validate_insuree_number
 
 

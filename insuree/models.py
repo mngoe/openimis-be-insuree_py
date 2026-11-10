@@ -255,6 +255,9 @@ class Insuree(core_models.VersionedModel, core_models.ExtendableModel):
 
     def is_adult(self, reference_date=None):
         if self.dob:
+            age = self.age(reference_date)
+            print(f"Age de la majorité: {core.age_of_majority}")
+            print(f"Age calculé de l'assuré: {age}")
             return self.age(reference_date) >= core.age_of_majority
         else:
             return None
