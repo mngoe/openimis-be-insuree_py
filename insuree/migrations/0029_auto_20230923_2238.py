@@ -12,36 +12,45 @@ class Migration(migrations.Migration):
         ('insuree', '0028_auto_20240819_1634'),
     ]
 
+    # The legacy IMIS schema already ships tblInsureeStatusReason and the
+    # tblInsuree status / status_date / StatusReason columns, so emitting the
+    # DDL fails with 'relation "tblInsureeStatusReason" already exists'.
+    # Declare them in Django's migration state only and leave the database as is.
     operations = [
-        migrations.CreateModel(
-            name='InsureeStatusReason',
-            fields=[
-                ('validity_from', core.fields.DateTimeField(db_column='ValidityFrom', default=datetime.datetime.now)),
-                ('validity_to', core.fields.DateTimeField(blank=True, db_column='ValidityTo', null=True)),
-                ('legacy_id', models.IntegerField(blank=True, db_column='LegacyID', null=True)),
-                ('id', models.SmallIntegerField(db_column='StatusReasonId', primary_key=True, serialize=False)),
-                ('insuree_status_reason', models.CharField(db_column='StatusReason', max_length=50)),
-                ('code', models.CharField(db_column='Code', max_length=5)),
-                ('status_type', models.CharField(choices=[('AC', 'Active'), ('IN', 'Inactive'), ('DE', 'Dead')], default='AC', max_length=2)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.CreateModel(
+                    name='InsureeStatusReason',
+                    fields=[
+                        ('validity_from', core.fields.DateTimeField(db_column='ValidityFrom', default=datetime.datetime.now)),
+                        ('validity_to', core.fields.DateTimeField(blank=True, db_column='ValidityTo', null=True)),
+                        ('legacy_id', models.IntegerField(blank=True, db_column='LegacyID', null=True)),
+                        ('id', models.SmallIntegerField(db_column='StatusReasonId', primary_key=True, serialize=False)),
+                        ('insuree_status_reason', models.CharField(db_column='StatusReason', max_length=50)),
+                        ('code', models.CharField(db_column='Code', max_length=5)),
+                        ('status_type', models.CharField(choices=[('AC', 'Active'), ('IN', 'Inactive'), ('DE', 'Dead')], default='AC', max_length=2)),
+                    ],
+                    options={
+                        'db_table': 'tblInsureeStatusReason',
+                        'managed': True,
+                    },
+                ),
+                migrations.AddField(
+                    model_name='insuree',
+                    name='status',
+                    field=models.CharField(choices=[('AC', 'Active'), ('IN', 'Inactive'), ('DE', 'Dead')], default='AC', max_length=2),
+                ),
+                migrations.AddField(
+                    model_name='insuree',
+                    name='status_date',
+                    field=core.fields.DateField(blank=True, db_column='status_date', null=True),
+                ),
+                migrations.AddField(
+                    model_name='insuree',
+                    name='status_reason',
+                    field=models.ForeignKey(blank=True, db_column='StatusReason', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='insurees', to='insuree.insureestatusreason'),
+                ),
             ],
-            options={
-                'db_table': 'tblInsureeStatusReason',
-                'managed': True,
-            },
-        ),
-        migrations.AddField(
-            model_name='insuree',
-            name='status',
-            field=models.CharField(choices=[('AC', 'Active'), ('IN', 'Inactive'), ('DE', 'Dead')], default='AC', max_length=2),
-        ),
-        migrations.AddField(
-            model_name='insuree',
-            name='status_date',
-            field=core.fields.DateField(blank=True, db_column='status_date', null=True),
-        ),
-        migrations.AddField(
-            model_name='insuree',
-            name='status_reason',
-            field=models.ForeignKey(blank=True, db_column='StatusReason', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='insurees', to='insuree.insureestatusreason'),
         ),
     ]
