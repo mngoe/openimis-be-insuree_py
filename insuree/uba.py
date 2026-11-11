@@ -51,7 +51,8 @@ def village_in_scope(user, village):
     user = Location.scoping_user(user)
     if user is None or getattr(user, "is_anonymous", True):
         return False
-    if getattr(user, "is_imis_admin", False):
+    from location.models import is_location_unscoped
+    if is_location_unscoped(user):
         return True
     village_id = getattr(village, "id", village)
     return Location.objects.filter(id=village_id).filter(
