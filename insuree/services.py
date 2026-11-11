@@ -561,19 +561,23 @@ class InsureePolicyService:
     def add_insuree_policy(self, insuree):
         from policy.models import Policy
         policies = Policy.objects.filter(family_id=insuree.family_id)
+        from policy.member_ages import member_coverage, insuree_policy_expiry
         for policy in policies:
             if policy.can_add_insuree():
+                # the product's age limits decide whether the new member is covered, and until when
+                if not member_coverage(policy.product, insuree, policy.start_date, policy.expiry_date).covered:
+                    logger.debug("Insuree %s not covered by policy %s (age limits)", insuree.chf_id, policy.uuid)
+                    continue
                 ip = InsureePolicy(
                     insuree=insuree,
                     policy=policy,
                     enrollment_date=policy.enroll_date,
                     start_date=policy.start_date,
                     effective_date=policy.effective_date,
-                    expiry_date=policy.expiry_date,
+                    expiry_date=insuree_policy_expiry(policy.product, insuree, policy),
                     offline=False,
                     audit_user_id=self.user.i_user.id
                 )
-                print(ip.__dict__)
                 ip.save()
 
 
