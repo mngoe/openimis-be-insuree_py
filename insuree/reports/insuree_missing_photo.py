@@ -2055,7 +2055,8 @@ def allowed_district_ids(user):
     """District ids `user` may report on, or None when unrestricted.
 
     Same rule as `Insuree.get_queryset`: assigned districts narrowed by the
-    ENROLMENT UBA credential, IMIS administrators (and ROW_SECURITY off) unrestricted.
+    ENROLMENT UBA credential, IMIS administrators and holders of the unscoped-location
+    right (and ROW_SECURITY off) unrestricted.
     """
     from core.apps import ENROLMENT_UBA_LINK_TYPE
     from core.models import InteractiveUser
@@ -2066,7 +2067,8 @@ def allowed_district_ids(user):
     if not isinstance(i_user, InteractiveUser):
         # technical users go through their rights only, as in Insuree.get_queryset
         return None
-    if i_user.is_imis_admin:
+    from location.models import is_location_unscoped
+    if is_location_unscoped(i_user):
         return None
     return list(
         Location.objects.filter(type="D", validity_to__isnull=True)
