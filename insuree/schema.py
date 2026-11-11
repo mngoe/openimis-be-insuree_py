@@ -2,9 +2,10 @@ import graphene
 from graphql import GraphQLError
 
 from claim.apps import ClaimConfig
+from core.gql import legacy_row_filters, row_filter_arguments
 from core.gql.export_mixin import ExportableQueryMixin
+from core.models import Audits, Validity
 from core.schema import signal_mutation_module_validate
-from core.utils import filter_validity
 from core.apps import ENROLMENT_UBA_LINK_TYPE
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
@@ -40,7 +41,7 @@ def family_fk(arg):
 
 _MPI_FALLBACK_IGNORED_ARGS = {
     "chf_id", "chfId", "ignore_location", "ignoreLocation",
-    "show_history", "showHistory", "uuid",
+    "show_history", "showHistory", "is_deleted", "isDeleted", "uuid",
     "first", "last", "before", "after", "offset", "orderBy",
     "parent_location", "parentLocation",
     "parent_location_level", "parentLocationLevel",
@@ -102,7 +103,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
     insuree_genders = graphene.List(GenderGQLType)
     insurees = OrderedDjangoFilterConnectionField(
         InsureeGQLType,
-        show_history=graphene.Boolean(),
+        **row_filter_arguments(),
         parent_location=graphene.String(),
         parent_location_level=graphene.Int(),
         client_mutation_id=graphene.String(),
@@ -123,7 +124,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
     families = FamiliesConnectionField(
         FamilyGQLType,
         null_as_false_poverty=graphene.Boolean(),
-        show_history=graphene.Boolean(),
+        **row_filter_arguments(),
         parent_location=graphene.String(),
         parent_location_level=graphene.Int(),
         client_mutation_id=graphene.String(),
@@ -135,6 +136,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         InsureeGQLType,
         family_uuid=graphene.String(required=True),
         orderBy=graphene.List(of_type=graphene.String),
+        **row_filter_arguments(),
     )
     insuree_officers = DjangoFilterConnectionField(OfficerGQLType)
     insuree_policy = OrderedDjangoFilterConnectionField(
@@ -202,9 +204,14 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
                 sender=self, additional_filter=additional_filter, user=info.context.user
             )
             filters.extend(filters_from_signal)
+        # validity / audits are applied by Insuree.get_queryset (OP-2029); the legacy
+        # arguments keep their meaning: showHistory returns every row, deleted ones
+        # and history copies included, and a uuid lookup finds a deleted insuree too
         show_history = kwargs.get('show_history', False)
-        if not show_history and not kwargs.get('uuid', None):
-            filters += filter_validity(**kwargs)
+        rows = legacy_row_filters(
+            info, kwargs,
+            validity=Validity.ALL if show_history or kwargs.get('uuid') else Validity.NOW,
+            audits=Audits.ALL if show_history else None)
         client_mutation_id = kwargs.get("client_mutation_id", None)
         if client_mutation_id:
             filters.append(
@@ -233,7 +240,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
                             loc_types=['D'], link_types=ENROLMENT_UBA_LINK_TYPE))]
 
         queryset = Insuree.objects.filter(*filters).all()
-        if _should_fallback_mpi(kwargs, chf_id, queryset):
+        if _should_fallback_mpi(kwargs, chf_id, Insuree.filter_rows(queryset, **rows)):
             try:
                 bundle = MpiClient().search_patient(chf_id)
             except MpiAmbiguous as exc:
@@ -261,10 +268,9 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         family = Family.get_queryset(None, user).filter(uuid=kwargs.get('family_uuid')).first()
         if family is None:
             return Insuree.objects.none()
-        return Insuree.get_queryset(None, user).filter(
-            Q(family=family),
-            *filter_validity(**kwargs)
-        ).order_by('-head', 'dob')
+        # live members unless isDeleted / showHistory say otherwise (OP-2029)
+        legacy_row_filters(info, kwargs, validity=Validity.NOW)
+        return Insuree.get_queryset(None, user).filter(family=family).order_by('-head', 'dob')
 
     def resolve_educations(self, info, **kwargs):
         if not can_query(info.context.user, InsureeConfig.gql_query_families_perms):
@@ -318,9 +324,13 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         if null_as_false_poverty is not None:
             filters += [Q(poverty=True)] if null_as_false_poverty else [
                 Q(poverty=False) | Q(poverty__isnull=True)]
+        # validity / audits are applied by Family.get_queryset (OP-2029); showHistory
+        # keeps its legacy meaning: every row, deleted ones and history copies included
         show_history = kwargs.get('show_history', False)
-        if not show_history:
-            filters += filter_validity(**kwargs)
+        legacy_row_filters(
+            info, kwargs,
+            validity=Validity.ALL if show_history else Validity.NOW,
+            audits=Audits.ALL if show_history else None)
         client_mutation_id = kwargs.get("client_mutation_id", None)
         if client_mutation_id:
             filters.append(
