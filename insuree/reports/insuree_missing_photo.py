@@ -2044,19 +2044,55 @@ WHERE f."ValidityTo" Is NULL And i."ValidityTo" Is NULL And p."ValidityTo" Is NU
   AND ({"LEN" if settings.MSSQL else "length"}(RTRIM(LTRIM(ph."PhotoFileName"))) = 0
           OR ph."PhotoFileName" IS NULL)
   AND (p."OfficerID" = %(officer_id)s OR %(officer_id)s = 0)
+  {{district_scope}}
 GROUP BY i."CHFID", i."LastName", i."OtherNames", i."Gender", i."IsHead", d."DistrictName", w."WardName",
          v."VillageName", o."Code", o."LastName", o."OtherNames", o."WorksTo"
 ORDER BY d."DistrictName", o."Code", w."WardName", v."VillageName"
 """
 
 
+def allowed_district_ids(user):
+    """District ids `user` may report on, or None when unrestricted.
+
+    Same rule as `Insuree.get_queryset`: assigned districts narrowed by the
+    ENROLMENT UBA credential, IMIS administrators and holders of the unscoped-location
+    right (and ROW_SECURITY off) unrestricted.
+    """
+    from core.apps import ENROLMENT_UBA_LINK_TYPE
+    from core.models import InteractiveUser
+    from location.models import Location, LocationManager
+    if not settings.ROW_SECURITY or user is None or getattr(user, "is_anonymous", False):
+        return None if not settings.ROW_SECURITY else []
+    i_user = getattr(user, "_u", user)
+    if not isinstance(i_user, InteractiveUser):
+        # technical users go through their rights only, as in Insuree.get_queryset
+        return None
+    from location.models import is_location_unscoped
+    if is_location_unscoped(i_user):
+        return None
+    return list(
+        Location.objects.filter(type="D", validity_to__isnull=True)
+        .filter(LocationManager().build_user_location_filter_query(
+            i_user, prefix="id", loc_types=["D"], link_types=ENROLMENT_UBA_LINK_TYPE))
+        .values_list("id", flat=True)
+    )
+
+
 def insuree_missing_photo_query(user, officerId=0, locationId=0, **kwargs):
+    districts = allowed_district_ids(user)
+    if districts is None:
+        district_scope = ""
+    elif districts:
+        # ids come from the database, not from the request
+        district_scope = 'AND d."DistrictId" IN (%s)' % ",".join(str(int(i)) for i in districts)
+    else:
+        return {"data": []}
     with connection.cursor() as cur:
         try:
             cur.execute(
-                missing_photo_sql,
+                missing_photo_sql.replace("{district_scope}", district_scope),
                 {
-                    "officer_id": officerId,
+                    "officer_id": officerId or 0,
                     "location_id": locationId,
                 },
             )

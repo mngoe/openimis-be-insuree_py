@@ -4,9 +4,12 @@ from dataclasses import dataclass
 from django.utils.translation import gettext as _
 from core.models import User, filter_validity
 from core.models.openimis_graphql_test_case import openIMISGraphQLTestCase
-from core.test_helpers import create_test_interactive_user
+from core.test_helpers import create_test_interactive_user, create_claim_admin_role
+from django.conf import settings
+from graphene_django.utils.testing import GraphQLTestCase
 from graphql_jwt.shortcuts import get_token
-from location.test_helpers import assign_user_districts
+from location.models import Location
+from location.test_helpers import create_test_location, assign_user_districts, create_basic_test_locations
 from rest_framework import status
 from insuree.test_helpers import create_test_insuree
 from location.test_helpers import create_test_village
@@ -39,10 +42,11 @@ class InsureeGQLTestCase(openIMISGraphQLTestCase):
         )
         cls.admin_user = create_test_interactive_user(username="testLocationAdmin")
         cls.admin_token = get_token(cls.admin_user, DummyContext(user=cls.admin_user))
-        cls.ca_user = create_test_interactive_user(username="testLocationNoRight", roles=[9])
+        cls.ca_user = create_test_interactive_user(username="testLocationNoRight", roles=[create_claim_admin_role().id])
         cls.ca_token = get_token(cls.ca_user, DummyContext(user=cls.ca_user))
         cls.admin_dist_user = create_test_interactive_user(username="testLocationDist")
-        assign_user_districts(cls.admin_dist_user, [cls.test_village.parent.parent.code])
+        create_basic_test_locations()
+        assign_user_districts(cls.admin_dist_user, ["R1D1", "R2D1", "R2D2", "R2D1", cls.test_village.parent.parent.code])
         cls.admin_dist_token = get_token(cls.admin_dist_user, DummyContext(user=cls.admin_dist_user))
         cls.photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEW10NBjBBbqAAAAH0lEQVRoge3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAABmmDh1QAAAABJRU5ErkJggg=="
 

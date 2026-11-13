@@ -11,7 +11,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('location', '0013_auto_20230317_1534'),
-        ('policy', '0004_add_medical_oficer_reading_rights'),
         ('insuree', '0021_auto_20240617_0430'),
     ]
 
@@ -209,4 +208,26 @@ class Migration(migrations.Migration):
         #     name='validity_from',
         #     field=core.fields.DateTimeField(db_column='ValidityFrom', default=datetime.datetime.now),
         # ),
+        # The AddField operations above are commented out because the legacy IMIS
+        # schema already ships these columns, so issuing the DDL would fail.
+        # Commenting them out, however, also kept the fields out of Django's
+        # migration state, which broke every later migration referring to them
+        # (0028 crashes with "Family has no field named 'uuid'").
+        # Re-declare the uuid fields in the state only: no DDL is emitted, the
+        # existing FamilyUUID / InsureeUUID columns are left untouched.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.AddField(
+                    model_name='family',
+                    name='uuid',
+                    field=models.CharField(db_column='FamilyUUID', default=uuid.uuid4, max_length=36, unique=True),
+                ),
+                migrations.AddField(
+                    model_name='insuree',
+                    name='uuid',
+                    field=models.CharField(db_column='InsureeUUID', default=uuid.uuid4, max_length=36, unique=True),
+                ),
+            ],
+        ),
     ]
